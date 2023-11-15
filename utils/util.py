@@ -162,12 +162,10 @@ def get_transform(dataset):
         return transform_train, transform_val
 
 def prepare_folders(args):
-    folders_util = [os.path.join(args.root_log, args.store_name),
-                    os.path.join(args.root_model, args.store_name)]
-    for folder in folders_util:
-        if not os.path.exists(folder):
-            print('creating folder ' + folder)
-            os.makedirs(folder)
+    folder = os.path.join(args.root_model, args.store_name)
+    if not os.path.exists(folder):
+        print('creating folder ' + folder)
+        os.makedirs(folder)
 
 def save_checkpoint(args, state, is_best, epoch):
     filename = '%s/%s/ckpt.pth.tar' % (args.root_model, args.store_name)

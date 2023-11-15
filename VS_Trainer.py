@@ -168,7 +168,7 @@ class Trainer(object):
 
                 inputs = inputs.to(self.device)
                 targets = targets.to(self.device)
-                output, output_cb, z, p = self.model(inputs, ret='all')
+                output, output_cb, z, p = self.model(inputs, ret = 'all')
 
                 if self.args.loss == 'ce':
                     criterion = nn.CrossEntropyLoss(reduction='mean')                # train fc_bc
@@ -178,8 +178,8 @@ class Trainer(object):
                 elif self.args.loss == 'vs':
                     # Assuming cls_num_list, gamma, and tau are defined in self.args
                     criterion = VSLoss(
-                                    gamma=self.args.gamma if hasattr(self.args, 'gamma') else 0.3,
-                                    tau=self.args.tau if hasattr(self.args, 'tau') else 1.0,
+                                    gamma=self.args.gamma if hasattr(self.args, 'gamma') else 0.15,
+                                    tau=self.args.tau if hasattr(self.args, 'tau') else 1.25,
                     )
 
                 loss = criterion(output_cb, targets)
@@ -203,18 +203,26 @@ class Trainer(object):
 
             # measure NC
             if self.args.debug>0:
-                if epoch % self.args.debug == 0:
+                if (epoch + 1) % self.args.debug == 0:
                     nc_dict = analysis(self.model, self.train_loader, self.args, epoch)
-                    self.log.info('Loss:{:.3f}, Acc:{:.2f}, NC1:{:.3f},\nWnorm:{}\nHnorm:{}\nWcos:{}'.format(
+                    self.log.info('Loss:{:.3f}, Acc:{:.2f}, NC1:{:.3f},\nWnorm:{}\nHnorm:{}\nWcos:{}\nWHcos:{}'.format(
                         nc_dict['loss'], nc_dict['acc'], nc_dict['nc1'],
                         np.array2string(nc_dict['w_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
                         np.array2string(nc_dict['h_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
-                        np.array2string(nc_dict['w_cos'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x})
+                        np.array2string(nc_dict['w_cos_avg'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
+                        np.array2string(nc_dict['wh_cos'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x})
                     ))
+
+                    if (epoch+1) % (self.args.debug*5) ==0:
+                                filename = os.path.join(self.args.root_model, self.args.store_name, 'analysis{}.pkl'.format(epoch))
+                                import pickle
+                                with open(filename, 'wb') as f:
+                                    pickle.dump(nc_dict, f)
+                                self.log.info('-- Has saved the NC analysis result to {}'.format(filename))
 
             # evaluate on validation set
             if self.args.knn:
-                acc = self.validate_knn(epoch=epoch)
+                acc1 = self.validate_knn(epoch=epoch)
             else:
                 acc1 = self.validate(epoch=epoch)
             if self.args.dataset == 'ImageNet-LT' or self.args.dataset == 'iNaturelist2018':
@@ -292,7 +300,7 @@ class Trainer(object):
         all_targets = []
         cfeats = self.get_knncentroids()
         self.knn_classifier = KNNClassifier(feat_dim=self.model.out_dim, num_classes=self.args.num_classes, feat_type='cl2n', dist_type='l2')
-        self.classifier.update(cfeats)
+        self.knn_classifier.update(cfeats)
 
         with torch.no_grad():
             end = time.time()

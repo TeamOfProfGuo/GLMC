@@ -137,7 +137,19 @@ class Trainer(object):
                         epoch + 1, self.epochs, i, len(self.train_loader), batch_time=batch_time,
                     data_time=data_time, loss=losses))  # TODO
                     print(output)
-                    # evaluate on validation set
+                    
+            # measure NC
+            if self.args.debug>0:
+                if epoch % self.args.debug == 0:
+                    nc_dict = analysis(self.model, self.train_loader, self.args)
+                    self.log.info('Loss:{:.3f}, Acc:{:.2f}, NC1:{:.3f},\nWnorm:{}\nHnorm:{}\nWcos:{}'.format(
+                        nc_dict['loss'], nc_dict['acc'], nc_dict['nc1'],
+                        np.array2string(nc_dict['w_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
+                        np.array2string(nc_dict['h_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
+                        np.array2string(nc_dict['w_cos'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x})
+                    ))
+                    
+            # evaluate on validation set
             acc1 = self.validate(epoch=epoch)
             if self.args.dataset == 'ImageNet-LT' or self.args.dataset == 'iNaturelist2018':
                 self.paco_adjust_learning_rate(self.optimizer, epoch, self.args)
@@ -206,7 +218,7 @@ class Trainer(object):
 
             # evaluate on validation set
             if self.args.knn:
-                acc = self.validate_knn(epoch=epoch)
+                acc1 = self.validate_knn(epoch=epoch)
             else:
                 acc1 = self.validate(epoch=epoch)
             if self.args.dataset == 'ImageNet-LT' or self.args.dataset == 'iNaturelist2018':
@@ -284,7 +296,7 @@ class Trainer(object):
         all_targets = []
         cfeats = self.get_knncentroids()
         self.knn_classifier = KNNClassifier(feat_dim=self.model.out_dim, num_classes=self.args.num_classes, feat_type='cl2n', dist_type='l2')
-        self.classifier.update(cfeats)
+        self.knn_classifier.update(cfeats)
 
         with torch.no_grad():
             end = time.time()

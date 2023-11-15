@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import sys
 import time
 import logging
@@ -34,10 +37,21 @@ def get_model(args):
 def get_dataset(args):
     transform_train,transform_val = util.get_transform(args.dataset)
     if args.dataset == 'cifar10':
-        trainset = cifar10Imbanlance.Cifar10Imbanlance(transform=transform_train,imbanlance_rate=args.imbanlance_rate, train=True,file_path=args.root)
-        testset = cifar10Imbanlance.Cifar10Imbanlance(imbanlance_rate=args.imbanlance_rate, train=False, transform=transform_val,file_path=args.root)
+        trainset = cifar10Imbanlance.Cifar10Imbalance(
+            imbanlance_rate=args.imbanlance_rate,
+            train=True,
+            transform=transform_train,
+            file_path=args.root,
+            category_image_counts=args.category_image_counts  
+        )
+        testset = cifar10Imbanlance.Cifar10Imbalance(
+            imbanlance_rate=args.imbanlance_rate,
+            train=False,
+            transform=transform_val,
+            file_path=args.root
+        )
         print("load cifar10")
-        return trainset,testset
+        return trainset, testset
 
     if args.dataset == 'cifar100':
         trainset = cifar100Imbanlance.Cifar100Imbanlance(transform=transform_train,imbanlance_rate=args.imbanlance_rate, train=True,file_path=os.path.join(args.root,'cifar-100-python/'))
@@ -100,7 +114,7 @@ def main_worker(gpu, args):
             print("=> no checkpoint found at '{}'".format(args.resume))
     log_format = '%(asctime)s %(message)s'
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=log_format, datefmt='%m/%d %I:%M')
-    fh = logging.FileHandler(os.path.join(args.root_log + args.store_name, 'log.txt'))
+    fh = logging.FileHandler(os.path.join(args.root_model + args.store_name, 'log.txt'))
     fh.setFormatter(logging.Formatter(log_format))
     logger = logging.getLogger()
     logger.addHandler(fh)
@@ -149,12 +163,13 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', default=200, type=int, metavar='N', help='number of total epochs to run')
     parser.add_argument('-b', '--batch_size', default=64, type=int, metavar='N', help='mini-batch size')
     parser.add_argument('--momentum', default=0.9, type=float, metavar='M', help='momentum')
-    parser.add_argument('--wd', '--weight_decay', default=5e-3, type=float, metavar='W',help='weight decay (default: 5e-3、2e-4、1e-4)', dest='weight_decay')
+    
+    
     parser.add_argument('--resample_weighting', default=0.0, type=float,help='weighted for sampling probability (q(1,k))')
     parser.add_argument('--label_weighting', default=1.0, type=float, help='weighted for Loss')
     parser.add_argument('--contrast_weight', default=10,type=int,help='Mixture Consistency  Weights')
     parser.add_argument('--beta', type=float, default=0.5, help="augment mixture")
-
+   
     parser.add_argument('--loss', type=str, default='vs')  # ce|ls|ceh|hinge
     parser.add_argument('--eps', type=float, default=0.05)  # for ls loss
 
@@ -165,11 +180,14 @@ if __name__ == '__main__':
     parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',help='number of data loading workers (default: 4)')
     parser.add_argument('--resume', default=None, type=str, metavar='PATH',help='path to latest checkpoint (default: none)')
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',help='manual epoch number (useful on restarts)')
-    parser.add_argument('--root_log', type=str, default='./output/')
+    
     parser.add_argument('--root_model', type=str, default='./output/')
     parser.add_argument('--store_name', type=str, default='name')
     parser.add_argument('--debug',  type=int, default=10)
-    parser.add_argument('--knn', default=False, action='store_true')
+    parser.add_argument('--knn', default=True, action='store_false')
+    parser.add_argument('--wd', '--weight_decay', default=5e-3, type=float, metavar='W',help='weight decay (default: 5e-3、2e-4、1e-4)', dest='weight_decay')
+    parser.add_argument('--category_image_counts', nargs='+', type=int, help='Image counts per category', default=None)
+
     args = parser.parse_args()
 
     if args.dataset == 'cifar10':

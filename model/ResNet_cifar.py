@@ -110,7 +110,68 @@ class ResNet_modify(nn.Module):
             p = self.contrast_head(z)
             return out, out_cb, z, p
 
+class ResNet_modify_50(nn.Module):
 
+    def __init__(self, block, num_blocks, num_classes=100, nf=64):
+        super(ResNet_modify_50, self).__init__()
+        self.in_planes = nf
+
+        self.conv1 = nn.Conv2d(3, self.in_planes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(self.in_planes)
+        self.layer1 = self._make_layer(block, 1 * nf, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(block, 2 * nf, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(block, 4 * nf, num_blocks[2], stride=2)
+        self.layer4 = self._make_layer(block, 8 * nf, num_blocks[3], stride=2)
+        self.out_dim = 8 * nf * block.expansion
+        
+
+        self.fc = nn.Linear(self.out_dim, num_classes)
+        # self.fc_cb = torch.nn.utils.weight_norm(nn.Linear(512 * block.expansion, num_class), dim=0)
+        hidden_dim = 128
+        self.fc_cb = nn.Linear(self.out_dim, num_classes)
+        self.contrast_head = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+        )
+        self.projection_head = nn.Sequential(
+            nn.Linear(self.out_dim, hidden_dim),
+
+        )
+        self.apply(_weights_init)
+
+    def _make_layer(self, block, planes, num_blocks, stride):
+        strides = [stride] + [1] * (num_blocks - 1)
+        layers = []
+        for stride in strides:
+            layers.append(block(self.in_planes, planes, stride))
+            self.in_planes = planes * block.expansion
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x, ret=None):
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)  # Added layer4
+        out = F.avg_pool2d(out, out.size()[3])
+        feature = out.view(out.size(0), -1)
+
+        if ret is None:
+            out = self.fc_cb(feature)
+            return out
+        elif ret == 'o':
+            out = self.fc_cb(feature)
+            return out
+        elif ret == 'of':
+            out = self.fc_cb(feature)
+            return out, feature
+        elif ret == 'all':
+            out = self.fc(feature)
+            out_cb = self.fc_cb(feature)
+            z = self.projection_head(feature)
+            p = self.contrast_head(z)
+            return out, out_cb, z, p
+            
 class BasicBlock(nn.Module):
     """Basic Block for resnet 18 and resnet 34
     """
@@ -148,9 +209,7 @@ class BasicBlock(nn.Module):
 
 
 class BottleNeck(nn.Module):
-    """Residual block for resnet over 50 layers
-
-    """
+    """Residual block for resnet over 50 layers"""
     expansion = 4
 
     def __init__(self, in_channels, out_channels, stride=1):
@@ -266,10 +325,10 @@ def resnet34(num_class=100):
     return ResNet(BasicBlock, [3, 4, 6, 3], num_class=num_class)
 
 
-def resnet50(num_class=100):
+def resnet50(num_class=10):
     """ return a ResNet 50 object
     """
-    return ResNet(BottleNeck, [3, 4, 6, 3], num_class=num_class)
+    return ResNet_modify_50(BottleNeck, [3, 4, 6, 3], num_classes=num_class)
 
 
 def resnet101(num_class=100):

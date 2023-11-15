@@ -175,11 +175,13 @@ if __name__ == '__main__':
     # etc.
     parser.add_argument('--seed', default=3407, type=int, help='seed for initializing training. ')
     parser.add_argument('-p', '--print_freq', default=1000, type=int, metavar='N',help='print frequency (default: 100)')
-    parser.add_argument('--gpu', default=None, type=int,help='GPU id to use.')
+    parser.add_argument('--gpu', default=0, type=int,help='GPU id to use.')
     parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',help='number of data loading workers (default: 4)')
     parser.add_argument('--resume', default=None, type=str, metavar='PATH',help='path to latest checkpoint (default: none)')
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',help='manual epoch number (useful on restarts)')
     parser.add_argument('--root_log', type=str, default='./output/log/')
     parser.add_argument('--root_model', type=str, default='./output/log/')
     parser.add_argument('--store_name', type=str, default='cifar')
+    
+    parser.add_argument('--debug',  type=int, default=10)
     main()

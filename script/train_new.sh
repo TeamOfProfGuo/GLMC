@@ -20,5 +20,5 @@ singularity exec --nv \
 --overlay ${ext3_path}:ro \
 ${sif_path} /bin/bash -c "
 source /ext3/env.sh
-python main_new.py --dataset cifar10 -a resnet32 --imbanlance_rate 0.01 --beta 0.5 --lr 0.01 --epochs 200 --momentum 0.9 --knn --store_name knn
+python main_new.py --dataset cifar10 -a resnet32 --imbanlance_rate 0.01 --beta 0.5 --lr 0.01 --epochs 200 --momentum 0.9 --knn --loss ls --store_name knn_ls
 "

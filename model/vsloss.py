@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 class VSLoss(nn.Module):
 
-    def __init__(self, gamma=0.15, tau=-0.5, reduction='mean'):
+    def __init__(self, gamma=0.15, tau=1.25, reduction='mean'):
         super(VSLoss, self).__init__()
         
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

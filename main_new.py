@@ -142,7 +142,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='cifar100', help="cifar10,cifar100,ImageNet-LT,iNaturelist2018")
     parser.add_argument('--root', type=str, default='../dataset/', help="dataset setting")
     parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet32',choices=('resnet18', 'resnet34', 'resnet32', 'resnet50', 'resnext50_32x4d'))
-    parser.add_argument('--num_classes', default=100, type=int, help='number of classes ')
+    parser.add_argument('--num_classes', default=10, type=int, help='number of classes ')
     parser.add_argument('--imbanlance_rate', default=0.01, type=float, help='imbalance factor')
 
     parser.add_argument('--lr', '--learning-rate', default=0.01, type=float, metavar='LR', help='initial learning rate',dest='lr')
@@ -169,7 +169,9 @@ if __name__ == '__main__':
     parser.add_argument('--root_model', type=str, default='./output/')
     parser.add_argument('--store_name', type=str, default='name')
     parser.add_argument('--debug',  type=int, default=10)
-    parser.add_argument('--knn', default=False, action='store_true')
+    parser.add_argument('--knn', default=True, action='store_false')
+    parser.add_argument('--category_image_counts', nargs='+', type=int, help='Image counts per category', default=None) #set the per class image counts manually
+
     args = parser.parse_args()
 
     if args.dataset == 'cifar10':

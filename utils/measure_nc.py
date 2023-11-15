@@ -20,6 +20,8 @@ def analysis(model, loader, args, epoch):
     criterion_summed = torch.nn.CrossEntropyLoss(reduction='sum')
     for computation in ['Mean', 'Cov']:
         for batch_idx, (data, target) in enumerate(loader, start=1):
+            if isinstance(data, list): 
+                data = data[0]
             data, target = data.to(device), target.to(device)
 
             with torch.no_grad():
@@ -77,18 +79,19 @@ def analysis(model, loader, args, epoch):
     nc1 = np.trace(Sw @ inv_Sb)
 
     # mutual coherence
-    W_nomarlized = W.T / W_norms
+    W_nomarlized = W.T / W_norms # [512, C]
     cos = ( W_nomarlized.T @ W_nomarlized ).cpu().numpy()  # [C, D] [D, C] -> [C, C]
     cos_avg = (cos.sum(1) - np.diag(cos)) / (cos.shape[1] - 1)
 
-    
+    M_normalized = M_ / M_norms  # [512, C]
+    cos_wh = torch.sum(W_nomarlized*M_normalized, dim=0).cpu().numpy()  # [C]
     
     #==========================draw W==========================================
     plot_dir = "/scratch/hy2611/GLMC/VS_plot"
     os.makedirs(plot_dir, exist_ok=True)
     
-        # Assuming 'cos' is your cosine similarity matrix
-    np.fill_diagonal(cos, 0)  # Set diagonal elements to 0
+        
+    np.fill_diagonal(cos, 0)  
 
     plt.figure(figsize=(10, 8))
     cax = plt.imshow(cos, cmap='coolwarm', interpolation='nearest')
@@ -97,12 +100,12 @@ def analysis(model, loader, args, epoch):
     plt.xlabel("Class Index")
     plt.ylabel("Class Index")
 
-    # Iterate over data dimensions and create text annotations.
+    
     for i in range(cos.shape[0]):
         for j in range(cos.shape[1]):
             plt.text(j, i, f'{cos[i, j]:.2f}', ha='center', va='center', color='black')
 
-    plot_path = os.path.join(plot_dir, f"cosine_similarity_heatmap_epoch_{epoch}.png")
+    plot_path = os.path.join(plot_dir, f"cos_VS_5000_50_epoch_{epoch}.png")
     plt.savefig(plot_path)
     plt.close()
     print(f"Saved cosine similarity heatmap to: {plot_path}")
@@ -120,7 +123,7 @@ def analysis(model, loader, args, epoch):
     plt.xlabel('Class Index')
     plt.ylabel('Cosine Similarity')
     plt.title('Cosine Similarity between Class Weights and Mean Features')
-    relationship_plot_path = os.path.join(plot_dir, f"Wi_Hi_cosine_similarity_epoch_{epoch}.png")
+    relationship_plot_path = os.path.join(plot_dir, f"Wi_Hi_cos_VS_5000_50_epoch_{epoch}.png")
     plt.savefig(relationship_plot_path)
     plt.close()
     
@@ -139,6 +142,8 @@ def analysis(model, loader, args, epoch):
         "nc1": nc1,
         "w_norm": W_norms.cpu().numpy(),
         "h_norm": M_norms.cpu().numpy(),
-        "w_cos": cos_avg
+        "w_cos": cos,
+        "w_cos_avg": cos_avg,
+        "wh_cos": cos_wh
     }
 
