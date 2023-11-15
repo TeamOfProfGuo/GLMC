@@ -4,9 +4,10 @@ import torch
 import random
 import numpy as np
 from scipy.sparse.linalg import svds
+import matplotlib.pyplot as plt
 
 
-def analysis(model, loader, args):
+def analysis(model, loader, args, epoch):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     N    = [0 for _ in range(args.num_classes)]   # within class sample size
@@ -79,6 +80,58 @@ def analysis(model, loader, args):
     W_nomarlized = W.T / W_norms
     cos = ( W_nomarlized.T @ W_nomarlized ).cpu().numpy()  # [C, D] [D, C] -> [C, C]
     cos_avg = (cos.sum(1) - np.diag(cos)) / (cos.shape[1] - 1)
+
+    
+    
+    #==========================draw W==========================================
+    plot_dir = "/scratch/hy2611/GLMC/VS_plot"
+    os.makedirs(plot_dir, exist_ok=True)
+    
+        # Assuming 'cos' is your cosine similarity matrix
+    np.fill_diagonal(cos, 0)  # Set diagonal elements to 0
+
+    plt.figure(figsize=(10, 8))
+    cax = plt.imshow(cos, cmap='coolwarm', interpolation='nearest')
+    plt.colorbar(cax)
+    plt.title("Cosine Similarity between Class Weights")
+    plt.xlabel("Class Index")
+    plt.ylabel("Class Index")
+
+    # Iterate over data dimensions and create text annotations.
+    for i in range(cos.shape[0]):
+        for j in range(cos.shape[1]):
+            plt.text(j, i, f'{cos[i, j]:.2f}', ha='center', va='center', color='black')
+
+    plot_path = os.path.join(plot_dir, f"cosine_similarity_heatmap_epoch_{epoch}.png")
+    plt.savefig(plot_path)
+    plt.close()
+    print(f"Saved cosine similarity heatmap to: {plot_path}")
+    
+    #==================draw relationship between W_i and h_i ==================
+    
+    # Normalize the means for each class
+    H_normalized = [mean[c] / N[c] for c in range(args.num_classes)]
+    
+    cosine_similarities = [torch.nn.functional.cosine_similarity(W[i].unsqueeze(0), H_normalized[i].unsqueeze(0)).item()
+                           for i in range(args.num_classes)]
+    
+    plt.figure(figsize=(10, 5))
+    plt.bar(range(args.num_classes), cosine_similarities)
+    plt.xlabel('Class Index')
+    plt.ylabel('Cosine Similarity')
+    plt.title('Cosine Similarity between Class Weights and Mean Features')
+    relationship_plot_path = os.path.join(plot_dir, f"Wi_Hi_cosine_similarity_epoch_{epoch}.png")
+    plt.savefig(relationship_plot_path)
+    plt.close()
+    
+    print(f"Saved Wi and Hi cosine similarity plot to: {relationship_plot_path}")
+    #==========================================================================
+    
+
+
+
+
+
 
     return {
         "loss": loss,

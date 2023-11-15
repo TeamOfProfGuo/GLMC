@@ -196,7 +196,7 @@ class Trainer(object):
             # measure NC
             if self.args.debug>0:
                 if epoch % self.args.debug == 0:
-                    nc_dict = analysis(self.model, self.train_loader, self.args)
+                    nc_dict = analysis(self.model, self.train_loader, self.args, epoch)
                     self.log.info('Loss:{:.3f}, Acc:{:.2f}, NC1:{:.3f},\nWnorm:{}\nHnorm:{}\nWcos:{}'.format(
                         nc_dict['loss'], nc_dict['acc'], nc_dict['nc1'],
                         np.array2string(nc_dict['w_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
