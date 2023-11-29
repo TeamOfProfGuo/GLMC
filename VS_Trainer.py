@@ -15,7 +15,7 @@ from model.KNN_classifier import KNNClassifier
 from model.vsloss import VSLoss
 
 class Trainer(object):
-    def __init__(self, args, model=None,train_loader=None, val_loader=None,weighted_train_loader=None,per_class_num=[],log=None):
+    def __init__(self, args, model=None,train_loader=None, val_loader=None,weighted_train_loader=None,per_class_num=[],log=None, data_percent = None):
         self.args = args
         self.device = args.gpu
         self.print_freq = args.print_freq
@@ -37,6 +37,7 @@ class Trainer(object):
         self.log = log
         self.beta = args.beta
         self.update_weight()
+        self.data_percent = data_percent
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def update_weight(self):
@@ -178,9 +179,11 @@ class Trainer(object):
                 elif self.args.loss == 'vs':
                     # Assuming cls_num_list, gamma, and tau are defined in self.args
                     criterion = VSLoss(
-                                    gamma=self.args.gamma if hasattr(self.args, 'gamma') else 0.15,
-                                    tau=self.args.tau if hasattr(self.args, 'tau') else 1.25,
+                        args=self.args,
+                        reduction='mean', 
+                        data_percent=self.data_percent
                     )
+
 
                 loss = criterion(output_cb, targets)
                 losses.update(loss.item(), inputs[0].size(0))

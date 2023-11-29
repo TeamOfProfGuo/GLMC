@@ -50,8 +50,9 @@ def get_dataset(args):
             transform=transform_val,
             file_path=args.root
         )
+        data_percent = trainset.get_per_class_num()
         print("load cifar10")
-        return trainset, testset
+        return trainset, testset, data_percent
 
     if args.dataset == 'cifar100':
         trainset = cifar100Imbanlance.Cifar100Imbanlance(transform=transform_train,imbanlance_rate=args.imbanlance_rate, train=True,file_path=os.path.join(args.root,'cifar-100-python/'))
@@ -120,7 +121,7 @@ def main_worker(gpu, args):
     logger.addHandler(fh)
 
     # Data loading code
-    train_dataset,val_dataset = get_dataset(args)
+    train_dataset,val_dataset, data_percent = get_dataset(args)
     num_classes = len(np.unique(train_dataset.targets))
     assert num_classes == args.num_classes
 
@@ -145,7 +146,7 @@ def main_worker(gpu, args):
 
     start_time = time.time()
     print("Training started!")
-    trainer = Trainer(args, model=model,train_loader=train_loader, val_loader=val_loader,weighted_train_loader=weighted_train_loader, per_class_num=cls_num_list,log=logging)
+    trainer = Trainer(args, model=model,train_loader=train_loader, val_loader=val_loader,weighted_train_loader=weighted_train_loader, per_class_num=cls_num_list,log=logging, data_percent = data_percent)
     trainer.train_base(cls_num_list)
     end_time = time.time()
     print("It took {} to execute the program".format(hms_string(end_time - start_time)))
@@ -187,6 +188,11 @@ if __name__ == '__main__':
     parser.add_argument('--knn', default=True, action='store_false')
     parser.add_argument('--wd', '--weight_decay', default=5e-3, type=float, metavar='W',help='weight decay (default: 5e-3、2e-4、1e-4)', dest='weight_decay')
     parser.add_argument('--category_image_counts', nargs='+', type=int, help='Image counts per category', default=None)
+
+
+    parser.add_argument('--gamma',  type=float, default=0)
+    parser.add_argument('--tau',  type=float, default=0)
+
 
     args = parser.parse_args()
 

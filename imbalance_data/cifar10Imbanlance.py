@@ -14,7 +14,7 @@ class Cifar10Imbalance(Dataset):
         self.category_image_counts = category_image_counts
 
         self.num_cls = num_cls
-        self.data = self.produce_imbalance_data(file_path=file_path, train=train, imbanlance_rate=self.imbanlance_rate)
+        self.data, _ = self.produce_imbalance_data(file_path=file_path, train=train, imbanlance_rate=self.imbanlance_rate)
         self.x = self.data['x']
         self.targets = self.data['y'].tolist()
         self.y = self.data['y'].tolist()
@@ -78,4 +78,4 @@ class Cifar10Imbalance(Dataset):
             "x": rehearsal_data,
             "y": rehearsal_label,
         }
-        return task_split
+        return task_split, data_percent
