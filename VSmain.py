@@ -172,7 +172,7 @@ if __name__ == '__main__':
     parser.add_argument('--beta', type=float, default=0.5, help="augment mixture")
    
     parser.add_argument('--loss', type=str, default='vs', type = 'str', help = 'ce')  # ce|ls|ceh|hinge
-    parser.add_argument('--eps', type=float, default=0.05)  # for ls loss
+    parser.add_argument('--eps', type=float, default=0.05 , help='epsilon')  
 
     # etc.
     parser.add_argument('--seed', default=3407, type=int, help='seed for initializing training. ')
