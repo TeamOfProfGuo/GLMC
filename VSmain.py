@@ -171,7 +171,7 @@ if __name__ == '__main__':
     parser.add_argument('--contrast_weight', default=10,type=int,help='Mixture Consistency  Weights')
     parser.add_argument('--beta', type=float, default=0.5, help="augment mixture")
    
-    parser.add_argument('--loss', type=str, default='vs')  # ce|ls|ceh|hinge
+    parser.add_argument('--loss', type=str, default='vs', type = 'str', help = 'ce')  # ce|ls|ceh|hinge
     parser.add_argument('--eps', type=float, default=0.05)  # for ls loss
 
     # etc.
