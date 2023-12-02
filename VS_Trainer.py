@@ -2,12 +2,14 @@ import sys
 import math
 import time
 import torch
+import mandb
+import random
 import datetime
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
-
+from tensorboardX import SummaryWriter
 from utils import util
 from utils.util import *
 from utils.measure_nc import analysis
@@ -39,6 +41,8 @@ class Trainer(object):
         self.update_weight()
         self.data_percent = data_percent
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        path = os.path.join(args.root_model, args.store_name, 'log')
+        self.writer = SummaryWriter(path)
 
     def update_weight(self):
         per_cls_weights = 1.0 / (np.array(self.cls_num_list) ** self.label_weighting)
@@ -106,8 +110,8 @@ class Trainer(object):
                                                                                         label_invs_w=one_hot_invs_w)
 
 
-                output_1, output_cb_1, z1, p1 = self.model(mix_x, ret='all')
-                output_2, output_cb_2, z2, p2 = self.model(cut_x, ret='all')
+                output_1, output_cb_1, z1, p1, _ = self.model(mix_x, ret='all')
+                output_2, output_cb_2, z2, p2, _ = self.model(cut_x, ret='all')
                 contrastive_loss = self.SimSiamLoss(p1, z2) + self.SimSiamLoss(p2, z1)
 
                 loss_mix = -torch.mean(torch.sum(F.log_softmax(output_1, dim=1) * mixup_y, dim=1))
@@ -157,24 +161,13 @@ class Trainer(object):
 
     def train_base(self, cls_num_list):
         best_acc1 = 0
-        for epoch in range(self.start_epoch, self.epochs):
-            batch_time = AverageMeter('Time', ':6.3f')
-            losses = AverageMeter('Loss', ':.4e')
-
-            # switch to train mode
-            self.model.train()
-            end = time.time()
-
-            for i, (inputs, targets) in enumerate(self.train_loader):
-
-                inputs = inputs.to(self.device)
-                targets = targets.to(self.device)
-                output, output_cb, z, p = self.model(inputs, ret = 'all')
-
-                if self.args.loss == 'ce':
+        if self.args.loss == 'ce':
                     criterion = nn.CrossEntropyLoss(reduction='mean')                # train fc_bc
                 elif self.args.loss == 'ls':
                     criterion = CrossEntropyLabelSmooth(self.args.num_classes, epsilon=self.args.eps)
+
+                elif self.args.loss == 'wce':
+                    criterion = nn.CrossEntropyLoss(weight=self.per_cls_weights, reduction='mean')
 
                 elif self.args.loss == 'vs':
                     # Assuming cls_num_list, gamma, and tau are defined in self.args
@@ -184,14 +177,69 @@ class Trainer(object):
                         data_percent=self.data_percent
                     )
 
+                wandb.watch(self.model, criterion, log="all", log_freq=10)
+                num_iter = 0
 
-                loss = criterion(output_cb, targets)
-                losses.update(loss.item(), inputs[0].size(0))
 
-                # compute gradient and do SGD step
-                self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()
+        for epoch in range(self.start_epoch, self.epochs):
+            batch_time = AverageMeter('Time', ':6.3f')
+            losses = AverageMeter('Loss', ':.4e')
+            train_acc = AverageMeter('Train_acc', ':.4e')
+
+            # switch to train mode
+            self.model.train()
+            end = time.time()
+
+            if self.args.resample_weighting > 0: 
+                train_loader = self.weighted_train_loader 
+            else: 
+                train_loader = self.train_loader
+
+            
+
+            for i, (inputs, targets) in enumerate(self.train_loader):
+
+
+                num_iter += 1
+                inputs = inputs.to(self.device)
+                targets = targets.to(self.device)
+                output, output_cb, z, p, h = self.model(inputs, ret='all')
+
+                if self.args.loss != 'hce':
+                    loss = criterion(output_cb, targets)
+                    losses.update(loss.item(), inputs[0].size(0))
+                    train_acc.update(torch.sum(output_cb.argmax(dim=-1) == targets).item()/inputs[0].size(0),
+                                     inputs[0].size(0)
+                                     )
+
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    self.optimizer.step()
+
+                elif self.args.loss == 'hce':
+                    criterion = nn.CrossEntropyLoss(reduction='mean')
+
+                    # gradient of L wrt. b
+                    beta = self.per_cls_weights[targets]           # [B]
+                    P = nn.Softmax(dim=-1)(output_cb.detach())     # [B, K]
+                    Y = torch.eye(self.args.num_classes, device=targets.device)[targets]  # [B, K]
+                    b_grad = beta.unsqueeze(1) * (P-Y)             # [B, K]
+                    b_grad = torch.sum(b_grad, dim=0)/len(b_grad)
+
+                    # gradient of L wrt. W
+                    weighted_P_Y = (P.detach()-Y) * beta.unsqueeze(1)                                # [B, K]
+                    W_grad = torch.einsum('db, bk->dk', h.detach().T, weighted_P_Y)/len(output_cb)   # [D, K]
+                    W_grad = W_grad.T    # [K, D]
+
+                    loss = criterion(output_cb, targets)
+                    losses.update(loss.item(), inputs[0].size(0))
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    self.model.fc_cb.bias.grad = b_grad
+                    self.model.fc_cb.weight.grad = W_grad
+
+                    self.optimizer.step()
+
 
                 # measure elapsed time
                 batch_time.update(time.time() - end)
@@ -199,10 +247,17 @@ class Trainer(object):
                 if i % self.print_freq == 0:
                     output = 'Epoch: [{0}/{1}][{2}/{3}], Time {batch_time.val:.3f} ({batch_time.avg:.3f}), Loss {loss.val:.4f} ({loss.avg:.4f})'.format(
                         epoch + 1, self.epochs, i, len(self.train_loader), batch_time=batch_time, loss=losses)
-                    print(output)
+                    wandb.log({'train/train_loss': losses.avg,
+                               'train/train_acc': train_acc.avg,
+                               'lr': self.optimizer.param_groups[0]['lr']},
+                              step=num_iter)
+                    losses.reset()
+                    train_acc.reset()
 
             self.log.info('EPOCH: {epoch} Train: Time {batch_time.val:.3f} ({batch_time.avg:.3f}), Loss {loss.val:.4f} ({loss.avg:.4f})'.format(
                 epoch=epoch + 1, batch_time=batch_time, loss=losses))
+
+
 
             # measure NC
             if self.args.debug>0:
@@ -286,9 +341,18 @@ class Trainer(object):
                     print(output)
 
             cls_acc, many_acc, medium_acc, few_acc = self.calculate_acc(all_targets, all_preds)
-            self.log.info('EPOCH: {epoch} Val: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(epoch=epoch + 1, top1=top1, top5=top5))
+            self.log.info('====> EPOCH: {epoch} Val: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(epoch=epoch + 1, top1=top1, top5=top5))
             self.log.info("many acc {:.2f}, med acc {:.2f}, few acc {:.2f}".format(many_acc, medium_acc, few_acc))
             out_cls_acc = '%s Class Accuracy: %s' % ('val', (np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x})))
+            self.log.info(out_cls_acc)
+
+            wandb.log({
+                'val/val_acc1': top1.avg,
+                'val/val_acc5': top5.avg,
+                'val/val_many': many_acc,
+                'val/val_medium': medium_acc,
+                'val/val_few': few_acc
+            })
 
         return top1.avg
 
@@ -337,6 +401,16 @@ class Trainer(object):
             self.log.info('EPOCH: {epoch} Val: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(epoch=epoch + 1, top1=top1, top5=top5))
             self.log.info("many acc {:.2f}, med acc {:.2f}, few acc {:.2f}".format(many_acc, medium_acc, few_acc))
             out_cls_acc = '%s Class Accuracy: %s' % ('val', (np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x})))
+            
+            self.log.info(out_cls_acc)
+
+            wandb.log({
+                'val/val_acc1': top1.avg,
+                'val/val_acc5': top5.avg,
+                'val/val_many': many_acc,
+                'val/val_medium': medium_acc,
+                'val/val_few': few_acc
+            })
 
         return top1.avg
 
