@@ -6,6 +6,7 @@ import time
 import logging
 import datetime
 import argparse
+import wandb
 from torch.backends import cudnn
 
 from utils import util
@@ -81,6 +82,14 @@ def main(args):
         torch.cuda.manual_seed_all(args.seed)
         cudnn.deterministic = True
         cudnn.benchmark = True
+
+    # intialize wandb
+    os.environ["WANDB_API_KEY"] = "cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb"
+    os.environ["WANDB_MODE"] = "dryrun"
+    wandb.login(key='cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb')
+    wandb.init(project="long_tail")
+    wandb.config.update(args)
+
     main_worker(args.gpu, args)
 
 def main_worker(gpu, args):
@@ -89,6 +98,14 @@ def main_worker(gpu, args):
     args.gpu = gpu
     if args.gpu is not None:
         print("Use GPU: {} for training".format(args.gpu))
+        log_format = '%(asctime)s %(message)s'
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=log_format, datefmt='%m/%d %I:%M')
+    fh = logging.FileHandler(os.path.join(args.root_model + args.store_name, 'log.txt'))
+    fh.setFormatter(logging.Formatter(log_format))
+    logger = logging.getLogger()
+    logger.addHandler(fh)
+    logging.info(args)
+
     # create model
     model = get_model(args)
     _ = print_model_param_nums(model=model)
@@ -113,12 +130,7 @@ def main_worker(gpu, args):
             print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
-    log_format = '%(asctime)s %(message)s'
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=log_format, datefmt='%m/%d %I:%M')
-    fh = logging.FileHandler(os.path.join(args.root_model + args.store_name, 'log.txt'))
-    fh.setFormatter(logging.Formatter(log_format))
-    logger = logging.getLogger()
-    logger.addHandler(fh)
+    
 
     # Data loading code
     train_dataset,val_dataset, data_percent = get_dataset(args)
@@ -210,7 +222,7 @@ if __name__ == '__main__':
     args.store_name = '{}_{}/{}/{}_{}'.format(
         args.dataset, args.arch,
         str(args.imbanlance_rate),
-        file_name, datetime.datetime.strftime(curr_time, '%Y-%m-%d')
+        file_name
     )
 
     main(args)

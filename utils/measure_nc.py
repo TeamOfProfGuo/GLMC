@@ -12,7 +12,7 @@ def analysis(model, loader, args, epoch):
 
     N    = [0 for _ in range(args.num_classes)]   # within class sample size
     mean = [0 for _ in range(args.num_classes)]
-    Sw   = 0
+    Sw   = [0 for _ in range(args.num_classes)]
     loss = 0
     n_correct = 0
 

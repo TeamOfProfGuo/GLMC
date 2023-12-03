@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
 from tensorboardX import SummaryWriter
 from utils import util
+from utils import draw_plot
 from utils.util import *
 from utils.measure_nc import analysis
 from model.KNN_classifier import KNNClassifier
@@ -208,8 +209,8 @@ class Trainer(object):
                 if self.args.loss != 'hce':
                     loss = criterion(output_cb, targets)
                     losses.update(loss.item(), inputs[0].size(0))
-                    train_acc.update(torch.sum(output_cb.argmax(dim=-1) == targets).item()/inputs[0].size(0),
-                                     inputs[0].size(0)
+                    train_acc.update(torch.sum(output_cb.argmax(dim=-1) == targets).item()/targets.size(0),
+                                     targets.size(0)
                                      )
 
                     self.optimizer.zero_grad()
@@ -272,11 +273,13 @@ class Trainer(object):
                     ))
 
                     if (epoch+1) % (self.args.debug*5) ==0:
-                                filename = os.path.join(self.args.root_model, self.args.store_name, 'analysis{}.pkl'.format(epoch))
-                                import pickle
-                                with open(filename, 'wb') as f:
-                                    pickle.dump(nc_dict, f)
-                                self.log.info('-- Has saved the NC analysis result to {}'.format(filename))
+                        fig = plot_nc(nc_dict)
+                        wandb.log({"chart": fig}, step=num_iter)
+                        filename = os.path.join(self.args.root_model, self.args.store_name, 'analysis{}.pkl'.format(epoch))	       
+                        import pickle	               
+                        with open(filename, 'wb') as f:	                    
+                            pickle.dump(nc_dict, f)
+                            self.log.info('-- Has saved the NC analysis result to {}'.format(filename))
 
             # evaluate on validation set
             if self.args.knn:
@@ -378,8 +381,8 @@ class Trainer(object):
 
                 # measure accuracy
                 acc1, acc5 = accuracy(logit, target, topk=(1, 5))
-                top1.update(acc1.item(), input.size(0))
-                top5.update(acc5.item(), input.size(0))
+                top1.update(acc1.item(), target.size(0))
+                top5.update(acc5.item(), target.size(0))
 
                 # measure elapsed time
                 batch_time.update(time.time() - end)

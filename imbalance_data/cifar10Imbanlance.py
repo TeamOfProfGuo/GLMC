@@ -9,7 +9,7 @@ class Cifar10Imbalance(Dataset):
                  train=True, transform=None, label_align=True, category_image_counts=None):
         self.transform = transform
         self.label_align = label_align
-        assert 0.0 < imbanlance_rate < 1, "imbanlance_rate must be between 0.0 and 1"
+        assert 0.0 < imbanlance_rate <= 1, "imbanlance_rate must be between 0.0 and 1"
         self.imbanlance_rate = imbanlance_rate
         self.category_image_counts = category_image_counts
 

@@ -108,7 +108,7 @@ class ResNet_modify(nn.Module):
             out_cb = self.fc_cb(feature)
             z = self.projection_head(feature)
             p = self.contrast_head(z)
-            return out, out_cb, z, p
+            return out, out_cb, z, p, feature
 
 class ResNet_modify_50(nn.Module):
 
