@@ -6,4 +6,9 @@ utils/__pycache__/
 VS_plot/
 wandb/
 submit/
+__pycache__/
+.idea/
+imbalance_data/__pycache__/
+model/__pycache__/
+
 ```

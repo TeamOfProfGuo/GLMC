@@ -85,7 +85,7 @@ def main(args):
 
     # intialize wandb
     os.environ["WANDB_API_KEY"] = "cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb"
-    os.environ["WANDB_MODE"] = "dryrun"
+    os.environ["WANDB_MODE"] = "online" # "dryrun" or "online"
     wandb.login(key='cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb')
     wandb.init(project="long_tail")
     wandb.config.update(args)

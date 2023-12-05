@@ -151,6 +151,7 @@ def analysis(model, loader, args, epoch):
         "loss": loss,
         "acc": acc,
         "nc1": nc1,
+        'nc1_cls': nc1_cls,
         "w_norm": W_norms.cpu().numpy(),
         "h_norm": M_norms.cpu().numpy(),
         "w_cos": cos,

@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
 from tensorboardX import SummaryWriter
 from utils import util
-from utils import draw_plot
+from utils.draw_plot import *
 from utils.util import *
 from utils.measure_nc import analysis
 from model.KNN_classifier import KNNClassifier
@@ -262,7 +262,7 @@ class Trainer(object):
 
             # measure NC
             if self.args.debug>0:
-                if (epoch + 1) % self.args.debug == 0:  #if (epoch + 1) % self.args.debug == 0:
+                if (epoch ) % self.args.debug == 0:  #if (epoch + 1) % self.args.debug == 0:
                     nc_dict = analysis(self.model, self.train_loader, self.args, epoch)
                     self.log.info('Loss:{:.3f}, Acc:{:.2f}, NC1:{:.3f},\nWnorm:{}\nHnorm:{}\nWcos:{}\nWHcos:{}'.format(
                         nc_dict['loss'], nc_dict['acc'], nc_dict['nc1'],
@@ -272,7 +272,7 @@ class Trainer(object):
                         np.array2string(nc_dict['wh_cos'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x})
                     ))
 
-                    if (epoch+1) % (self.args.debug*5) ==0:
+                    if (epoch) % (self.args.debug*5) ==0: #if (epoch+1) % (self.args.debug*5) ==0: 
                         fig = plot_nc(nc_dict)
                         wandb.log({"chart": fig}, step=num_iter)
                         filename = os.path.join(self.args.root_model, self.args.store_name, 'analysis{}.pkl'.format(epoch))	       
