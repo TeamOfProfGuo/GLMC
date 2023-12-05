@@ -13,7 +13,7 @@ singularity exec --nv --bind /scratch/hy2611 --overlay /scratch/hy2611/overlay-2
 source /ext3/env.sh
 cd /scratch/hy2611/GLMC
 python VSmain.py --dataset cifar10 -a resnet32 \
---num_classes 10 --imbanlance_rate 0.01 --beta 0.5 --loss vs \
+--num_classes 10 --imbanlance_rate 0.01 --beta 0.5 --loss ce \
 --lr 0.01 --epochs 200 -b 64 --momentum 0.9 --weight_decay 5e-3 \
 --resample_weighting 0.0 --label_weighting 1.2 --contrast_weight 4 \
 --category_image_counts 5000 5000 5000 5000 5000 50 50 50 50 50 --gamma 0.15 --tau 1.25

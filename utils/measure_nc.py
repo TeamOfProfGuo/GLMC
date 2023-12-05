@@ -12,7 +12,7 @@ def analysis(model, loader, args, epoch):
 
     N    = [0 for _ in range(args.num_classes)]   # within class sample size
     mean = [0 for _ in range(args.num_classes)]
-    Sw   = [0 for _ in range(args.num_classes)]
+    Sw_cls   = [0 for _ in range(args.num_classes)]
     loss = 0
     n_correct = 0
 
@@ -21,31 +21,31 @@ def analysis(model, loader, args, epoch):
     for batch_idx, (data, target) in enumerate(loader):
         data, target = data.to(device), target.to(device)
         with torch.no_grad():
-            output, features = model(data, return_features=True) #[B, C], [B, 512]
+            output, h = model(data, ret = 'of') #[B, C], [B, 512]
             loss += criterion_summed(output, target).item()
 
             net_pred = torch.argmax(output, dim=1)
             n_correct += torch.sum(net_pred == target).item()
-            for c in range(args.C):
+            for c in range(args.num_classes):
                 idxs = torch.where(target == c)[0]
 
                 if len(idxs) > 0: #i.e. if there are samples of class c in this batch
-                h_c = h[idxs, :]
-                mean[c] += torch.sum(h_c, dim = 0) #CHW
-                N[c] += h_c.shape[0]
+                    h_c = h[idxs, :]
+                    mean[c] += torch.sum(h_c, dim = 0) #CHW
+                    N[c] += h_c.shape[0]
 
 
     M = torch.stack(mean).T       # [512, K]
-    M = M / torch.tensor(N)[:, None]  # [512, K]
+    M = M / torch.tensor(N, device=M.device).unsqueeze(0) # [512, K]
     loss /= sum(N)
     acc = n_correct / sum(N)
 
     for batch_idx, (data, target) in enumerate(loader, start=1):
         data, target = data.to(device), target.to(device)
         with torch.no_grad():
-            output, h = model(data, ret_feat=True)  # [B, C], [B, 512]
+            output, h = model(data, ret='of')  # [B, C], [B, 512]
 
-        for c in range(args.C):
+        for c in range(args.num_classes):
             idxs = torch.where(target == c)[0]
             if len(idxs) > 0:  # If no class-c in this batch
                 h_c = h[idxs, :]  # [B, 512]
@@ -58,16 +58,16 @@ def analysis(model, loader, args, epoch):
     muG = torch.mean(M, dim=1, keepdim=True)  # [512, C] -> [512, 1]
 
     M_ = M - muG  # [512, C]
-    Sb = torch.matmul(M_, M_.T) / args.C
+    Sb = torch.matmul(M_, M_.T) / args.num_classes  # [512, C] [C, 512] -> [512, 512]
 
     # ============== NC1 ==============
     Sw_all = sum(Sw_cls) / sum(N)  # [512, 512]
     for c in range(args.num_classes):
         Sw_cls[c] = Sw_cls[c] / N[c]
 
-    Sw_all = Sw_all.cpu().numpy()
+    Sw = Sw_all.cpu().numpy()
     Sb = Sb.cpu().numpy()
-    eigvec, eigval, _ = svds(Sw_all, k=args.num_classes - 1)
+    eigvec, eigval, _ = svds(Sb, k=args.num_classes - 1)
     inv_Sb = eigvec @ np.diag(1 / eigval) @ eigvec.T
     nc1 = np.trace(Sw @ Sb)
     nc1_cls = [np.trace(Sw_cls1.cpu().numpy() @ inv_Sb) for Sw_cls1 in Sw_cls]
@@ -76,7 +76,7 @@ def analysis(model, loader, args, epoch):
     # ============== NC2: norm and cos ==============
     W = model.fc_cb.weight.detach().T       #  [512, C]
     M_norms = torch.norm(M_, dim=0)   #  [C]
-    W_norms = torch.norm(W.T, dim=0)  #  [C]
+    W_norms = torch.norm(W, dim=0)  #  [C]
 
     # angle between W
     W_nomarlized = W / W_norms  # [512, C]
@@ -96,7 +96,7 @@ def analysis(model, loader, args, epoch):
 
 
 
-    
+    ''' Original draw plot methods without using wandb are as follows >>>>
     #==========================draw W==========================================
     plot_dir = "/scratch/hy2611/GLMC/VS_plot"
     os.makedirs(plot_dir, exist_ok=True)
@@ -140,7 +140,7 @@ def analysis(model, loader, args, epoch):
     
     print(f"Saved Wi and Hi cosine similarity plot to: {relationship_plot_path}")
     #==========================================================================
-    
+    '''
 
 
 
@@ -155,6 +155,8 @@ def analysis(model, loader, args, epoch):
         "h_norm": M_norms.cpu().numpy(),
         "w_cos": cos,
         "w_cos_avg": cos_avg,
+        "h_cos":h_cos,
+        "h_cos_avg": h_cos_avg,
         "wh_cos": wh_cos
     }
 

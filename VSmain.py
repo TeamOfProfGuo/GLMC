@@ -90,7 +90,7 @@ def main(args):
     wandb.init(project="long_tail")
     wandb.config.update(args)
 
-    main_worker(args.gpu, args)
+    main_worker(args.gpu, wandb.config)
 
 def main_worker(gpu, args):
     global best_acc1
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     parser.add_argument('--contrast_weight', default=10,type=int,help='Mixture Consistency  Weights')
     parser.add_argument('--beta', type=float, default=0.5, help="augment mixture")
    
-    parser.add_argument('--loss', type=str, default='vs', type = 'str', help = 'ce')  # ce|ls|ceh|hinge
+    parser.add_argument('--loss', type=str, default='vs', help = 'ce')  # ce|ls|ceh|hinge
     parser.add_argument('--eps', type=float, default=0.05 , help='epsilon')  
 
     # etc.
@@ -219,7 +219,7 @@ if __name__ == '__main__':
 
     curr_time = datetime.datetime.now()
     file_name = args.store_name
-    args.store_name = '{}_{}/{}/{}_{}'.format(
+    args.store_name = '{}_{}/{}/{}'.format(
         args.dataset, args.arch,
         str(args.imbanlance_rate),
         file_name

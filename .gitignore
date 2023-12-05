@@ -4,4 +4,6 @@ plot/
 output/
 utils/__pycache__/
 VS_plot/
+wandb/
+submit/
 ```

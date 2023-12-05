@@ -2,7 +2,7 @@ import sys
 import math
 import time
 import torch
-import mandb
+import wandb
 import random
 import datetime
 import numpy as np
@@ -163,23 +163,23 @@ class Trainer(object):
     def train_base(self, cls_num_list):
         best_acc1 = 0
         if self.args.loss == 'ce':
-                    criterion = nn.CrossEntropyLoss(reduction='mean')                # train fc_bc
-                elif self.args.loss == 'ls':
-                    criterion = CrossEntropyLabelSmooth(self.args.num_classes, epsilon=self.args.eps)
+            criterion = nn.CrossEntropyLoss(reduction='mean')                # train fc_bc
+        elif self.args.loss == 'ls':
+            criterion = CrossEntropyLabelSmooth(self.args.num_classes, epsilon=self.args.eps)
 
-                elif self.args.loss == 'wce':
-                    criterion = nn.CrossEntropyLoss(weight=self.per_cls_weights, reduction='mean')
+        elif self.args.loss == 'wce':
+            criterion = nn.CrossEntropyLoss(weight=self.per_cls_weights, reduction='mean')
 
-                elif self.args.loss == 'vs':
-                    # Assuming cls_num_list, gamma, and tau are defined in self.args
-                    criterion = VSLoss(
+        elif self.args.loss == 'vs':
+            # Assuming cls_num_list, gamma, and tau are defined in self.args
+            criterion = VSLoss(
                         args=self.args,
                         reduction='mean', 
                         data_percent=self.data_percent
                     )
 
-                wandb.watch(self.model, criterion, log="all", log_freq=10)
-                num_iter = 0
+        wandb.watch(self.model, criterion, log="all", log_freq=10)
+        num_iter = 0
 
 
         for epoch in range(self.start_epoch, self.epochs):
@@ -262,7 +262,7 @@ class Trainer(object):
 
             # measure NC
             if self.args.debug>0:
-                if (epoch + 1) % self.args.debug == 0:
+                if (epoch + 1) % self.args.debug == 0:  #if (epoch + 1) % self.args.debug == 0:
                     nc_dict = analysis(self.model, self.train_loader, self.args, epoch)
                     self.log.info('Loss:{:.3f}, Acc:{:.2f}, NC1:{:.3f},\nWnorm:{}\nHnorm:{}\nWcos:{}\nWHcos:{}'.format(
                         nc_dict['loss'], nc_dict['acc'], nc_dict['nc1'],

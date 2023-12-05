@@ -1,5 +1,7 @@
 import torch.nn as nn
 import torch
+import random
+import numpy as np
 import torch.nn.init as init
 
 def _weights_init(m):
@@ -53,9 +55,10 @@ class BasicBlock_s(nn.Module):
 
 class ResNet_modify(nn.Module):
 
-    def __init__(self, block, num_blocks, num_classes=100, nf=64):
+    def __init__(self, block, num_blocks, num_classes=10, nf=64):
         super(ResNet_modify, self).__init__()
         self.in_planes = nf
+        self.num_classes = num_classes
 
         self.conv1 = nn.Conv2d(3, self.in_planes, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(self.in_planes)
