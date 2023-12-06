@@ -30,7 +30,7 @@ def get_model(args):
         elif args.arch == 'resnet18':
             net = ResNet_cifar.resnet18(num_class=args.num_classes)
         elif args.arch == 'resnet32':
-            net = ResNet_cifar.resnet32(num_class=args.num_classes)
+            net = ResNet_cifar.resnet32(num_class=args.num_classes, ETF_fc=args.ETF_fc)
         elif args.arch == 'resnet34':
             net = ResNet_cifar.resnet34(num_class=args.num_classes)
         return net
@@ -88,6 +88,7 @@ def main(args):
     os.environ["WANDB_MODE"] = "online" # "dryrun" or "online"
     wandb.login(key='cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb')
     wandb.init(project="long_tail")
+    experiment_name = "Fix classifier as ETF/CE/5000_50/" 
     wandb.config.update(args)
 
     main_worker(args.gpu, wandb.config)
@@ -200,7 +201,7 @@ if __name__ == '__main__':
     parser.add_argument('--knn', default=True, action='store_false')
     parser.add_argument('--wd', '--weight_decay', default=5e-3, type=float, metavar='W',help='weight decay (default: 5e-3、2e-4、1e-4)', dest='weight_decay')
     parser.add_argument('--category_image_counts', nargs='+', type=int, help='Image counts per category', default=None)
-
+    parser.add_argument('--ETF_fc', default = False, help = 'fix the classification layer as ETF')
 
     parser.add_argument('--gamma',  type=float, default=0)
     parser.add_argument('--tau',  type=float, default=0)

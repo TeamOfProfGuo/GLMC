@@ -55,7 +55,7 @@ class BasicBlock_s(nn.Module):
 
 class ResNet_modify(nn.Module):
 
-    def __init__(self, block, num_blocks, num_classes=10, nf=64):
+    def __init__(self, block, num_blocks, num_classes=10, nf=64, ETF_fc=False):
         super(ResNet_modify, self).__init__()
         self.in_planes = nf
         self.num_classes = num_classes
@@ -68,8 +68,19 @@ class ResNet_modify(nn.Module):
         self.out_dim = 4 * nf * block.expansion
 
         self.fc = nn.Linear(self.out_dim, num_classes)
+
+        if ETF_fc:
+        # Create ETF weights
+            etf_weight = torch.sqrt(torch.tensor(num_classes / (num_classes - 1))) * (torch.eye(num_classes) - (1 / num_classes) * torch.ones((num_classes, num_classes)))
+            etf_weight /= torch.sqrt((1 / num_classes) * torch.norm(etf_weight, 'fro') ** 2)
+            self.fc.etf_weight = nn.Parameter(torch.mm(etf_weight, torch.eye(num_classes, 512 * block.expansion)))
+            self.fc.etf_weight.requires_grad_(False)
+
+
         # self.fc_cb = torch.nn.utils.weight_norm(nn.Linear(512 * block.expansion, num_class), dim=0)
         hidden_dim = 128
+
+        ## classification head
         self.fc_cb = nn.Linear(self.out_dim, num_classes)
         self.contrast_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -319,8 +330,8 @@ def resnet18(num_class=100):
     """
     return ResNet(BasicBlock, [2, 2, 2, 2], num_class=num_class)
 
-def resnet32(num_class=10):
-    return ResNet_modify(BasicBlock_s, [5, 5, 5], num_classes=num_class)
+def resnet32(num_class=10, ETF_fc=False):
+    return ResNet_modify(BasicBlock_s, [5, 5, 5], num_classes=num_class, ETF_fc=ETF_fc)
 
 def resnet34(num_class=100):
     """ return a ResNet 34 object
