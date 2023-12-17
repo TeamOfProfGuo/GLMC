@@ -90,7 +90,7 @@ def main_worker(gpu, args):
     if args.gpu is not None:
         print("Use GPU: {} for training".format(args.gpu))
     # create model
-    num_classes = args.num_classes
+    #num_classes = args.num_classes
     model = get_model(args)
     _ = print_model_param_nums(model=model)
     if args.gpu is not None:

@@ -170,6 +170,12 @@ class Trainer(object):
         elif self.args.loss == 'wce':
             criterion = nn.CrossEntropyLoss(weight=self.per_cls_weights, reduction='mean')
 
+        elif self.args.loss == 'hce':
+            criterion = nn.CrossEntropyLoss(reduction='mean')
+
+        elif self.args.loss == 'bce':
+            criterion = nn.BCEWithLogitsLoss(reduction='mean')
+
         elif self.args.loss == 'vs':
             # Assuming cls_num_list, gamma, and tau are defined in self.args
             criterion = VSLoss(
@@ -200,10 +206,47 @@ class Trainer(object):
 
             for i, (inputs, targets) in enumerate(self.train_loader):
 
-
                 num_iter += 1
                 inputs = inputs.to(self.device)
                 targets = targets.to(self.device)
+                if self.args.mixup >= 0.0:
+                    output_cb, reweighted_targets, h = self.model.forward_mixup(inputs, targets, mixup=self.args.mixup, mixup_alpha=self.args.mixup_alpha)
+
+                else:
+                    output, output_cb, z, p, h = self.model(inputs, ret='all')
+
+                train_acc.update(torch.sum(output_cb.argmax(dim=-1) == targets).item() / targets.size(0),
+                                                targets.size(0))
+                                                
+                loss = criterion(output_cb, reweighted_targets if self.args.mixup >= 0 else targets)
+                losses.update(loss.item(), targets.size(0))
+
+                if self.args.loss != 'hce':
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    self.optimizer.step()   
+
+                elif self.args.loss == 'hce':
+                    # gradient of L wrt. b
+                    beta = self.per_cls_weights[targets]
+                    P = nn.Softmax(dim=-1)(output_cb.detach())
+                    Y = torch.eye(self.args.num_classes, device=targets.device)[targets]
+                    b_grad = beta.unsqueeze(1) * (P-Y) #[B, K]
+                    b_grad = torch.sum(b_grad, dim=0)/len(b_grad)
+
+                    # gradient of L wrt. W
+                    weighted_P_Y = (P.detach()-Y) * beta.unsqueeze(1) #[B,K]
+                    W_grad = torch.einsum('db, bk->dk', h.detach().T, weighted_P_Y)/len(output_cb) #[D,K]
+                    W_grad = W_grad.T
+
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    self.model.fc_cb.bias.grad = b_grad
+                    self.model.fc_cb.weight.grad = W_grad
+                    self.optimizer.step()
+
+
+                '''
                 output, output_cb, z, p, h = self.model(inputs, ret='all')
 
                 if self.args.loss != 'hce':
@@ -240,7 +283,7 @@ class Trainer(object):
                     self.model.fc_cb.weight.grad = W_grad
 
                     self.optimizer.step()
-
+                '''
 
                 # measure elapsed time
                 batch_time.update(time.time() - end)
@@ -262,17 +305,17 @@ class Trainer(object):
 
             # measure NC
             if self.args.debug>0:
-                if (epoch +1) % self.args.debug == 0:  #if (epoch + 1) % self.args.debug == 0:
-                    nc_dict = analysis(self.model, self.train_loader, self.args, epoch)
-                    self.log.info('Loss:{:.3f}, Acc:{:.2f}, NC1:{:.3f},\nWnorm:{}\nHnorm:{}\nWcos:{}\nWHcos:{}'.format(
-                        nc_dict['loss'], nc_dict['acc'], nc_dict['nc1'],
+                if (epoch + 1) % self.args.debug == 0:  #debug: if (epoch + 1) % self.args.debug == 0:
+                    nc_dict = analysis(self.model, self.train_loader, self.args)
+                    self.log.info('Loss:{:.3f}, Acc:{:.2f}, NC1:{:.3f}, NC2h:{:.3f}, NC2W:{:.3f}, NC3:{:.3f}\nWnorm:{}\nHnorm:{}\nWHcos:{}'.format(
+                        nc_dict['loss'], nc_dict['acc'], nc_dict['nc1'], nc_dict['nc2_h'], nc_dict['nc2_w'], nc_dict['nc3'],
                         np.array2string(nc_dict['w_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
                         np.array2string(nc_dict['h_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
                         np.array2string(nc_dict['w_cos_avg'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
                         np.array2string(nc_dict['wh_cos'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x})
                     ))
 
-                    if (epoch + 1) % (self.args.debug*5) ==0: #if (epoch+1) % (self.args.debug*5) ==0: 
+                    if (epoch + 1) % (self.args.debug*5) ==0: #debug: if (epoch+1) % (self.args.debug*5) ==0: 
                         fig = plot_nc(nc_dict)
                         wandb.log({"chart": fig}, step=num_iter)
                         filename = os.path.join(self.args.root_model, self.args.store_name, 'analysis{}.pkl'.format(epoch))	       

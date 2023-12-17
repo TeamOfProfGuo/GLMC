@@ -14,7 +14,7 @@ class Cifar100Imbanlance(Dataset):
     def __init__(self, imbanlance_rate=0.1, file_path="data/cifar-100-python/", num_cls=100, transform=None,
                  train=True):
         self.transform = transform
-        assert 0.0 < imbanlance_rate < 1, "imbanlance_rate must 0.0 < p < 1"
+        assert 0.0 < imbanlance_rate <= 1, "imbanlance_rate must 0.0 < p <= 1"
         self.num_cls = num_cls
         self.file_path = file_path
         self.imbanlance_rate = imbanlance_rate

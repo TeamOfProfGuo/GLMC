@@ -85,10 +85,9 @@ def main(args):
 
     # intialize wandb
     os.environ["WANDB_API_KEY"] = "cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb"
-    os.environ["WANDB_MODE"] = "online" # "dryrun" or "online"
+    os.environ["WANDB_MODE"] = "dryrun" # "dryrun" or "online"
     wandb.login(key='cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb')
-    wandb.init(project="long_tail")
-    experiment_name = "Fix classifier as ETF/CE/5000_50/" 
+    wandb.init(project="Imbalance Rate 1", name=args.store_name)
     wandb.config.update(args)
 
     main_worker(args.gpu, wandb.config)
@@ -195,8 +194,10 @@ if __name__ == '__main__':
     parser.add_argument('--resume', default=None, type=str, metavar='PATH',help='path to latest checkpoint (default: none)')
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',help='manual epoch number (useful on restarts)')
     
+    parser.add_argument('--mixup', type=int, default=-1, help='flag for using mixup, -1 means no mixup')
+    parser.add_argument('--mixup_alpha', type=float, default=0.0, help='alpha parameter for mixup')
     parser.add_argument('--root_model', type=str, default='./output/')
-    parser.add_argument('--store_name', type=str, default='name')
+    
     parser.add_argument('--debug',  type=int, default=10)
     parser.add_argument('--knn', default=True, action='store_false')
     parser.add_argument('--wd', '--weight_decay', default=5e-3, type=float, metavar='W',help='weight decay (default: 5e-3、2e-4、1e-4)', dest='weight_decay')
@@ -206,6 +207,8 @@ if __name__ == '__main__':
     parser.add_argument('--gamma',  type=float, default=0)
     parser.add_argument('--tau',  type=float, default=0)
 
+    #set the experiment name
+    parser.add_argument('--store_name', type=str, default='name') 
 
     args = parser.parse_args()
 

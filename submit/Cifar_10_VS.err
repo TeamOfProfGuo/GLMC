@@ -1,5 +1,142 @@
+wandb: Currently logged in as: _cloud (ml-nyush). Use `wandb login --relogin` to force relogin
+wandb: Appending key for api.wandb.ai to your netrc file: /home/hy2611/.netrc
+wandb: Currently logged in as: _cloud (ml-nyush). Use `wandb login --relogin` to force relogin
+wandb: Appending key for api.wandb.ai to your netrc file: /home/hy2611/.netrc
+wandb: Currently logged in as: _cloud (ml-nyush). Use `wandb login --relogin` to force relogin
+wandb: Appending key for api.wandb.ai to your netrc file: /home/hy2611/.netrc
+wandb: wandb version 0.16.1 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
 wandb: Tracking run with wandb version 0.16.0
-wandb: W&B syncing is set to `offline` in this directory.  
-wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Run data is saved locally in /scratch/hy2611/GLMC/wandb/run-20231206_101637-lgrpi0pp
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run dandy-eon-7
+wandb: ⭐️ View project at https://wandb.ai/ml-nyush/long_tail
+wandb: 🚀 View run at https://wandb.ai/ml-nyush/long_tail/runs/lgrpi0pp
+wandb: wandb version 0.16.1 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.16.0
+wandb: Run data is saved locally in /scratch/hy2611/GLMC/wandb/run-20231206_101637-br4q9tb1
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run sunny-lion-7
+wandb: ⭐️ View project at https://wandb.ai/ml-nyush/long_tail
+wandb: 🚀 View run at https://wandb.ai/ml-nyush/long_tail/runs/br4q9tb1
+wandb: wandb version 0.16.1 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.16.0
+wandb: Run data is saved locally in /scratch/hy2611/GLMC/wandb/run-20231206_101638-b3y7z0z7
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run ethereal-elevator-9
+wandb: ⭐️ View project at https://wandb.ai/ml-nyush/long_tail
+wandb: 🚀 View run at https://wandb.ai/ml-nyush/long_tail/runs/b3y7z0z7
 /ext3/miniconda3/lib/python3.10/site-packages/torch/utils/data/dataloader.py:561: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 2, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
   warnings.warn(_create_warning_msg(
+/ext3/miniconda3/lib/python3.10/site-packages/torch/utils/data/dataloader.py:561: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 2, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(_create_warning_msg(
+/ext3/miniconda3/lib/python3.10/site-packages/torch/utils/data/dataloader.py:561: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 2, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(_create_warning_msg(
+/ext3/miniconda3/lib/python3.10/site-packages/torch/utils/data/dataloader.py:561: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 2, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(_create_warning_msg(
+/ext3/miniconda3/lib/python3.10/site-packages/torch/utils/data/dataloader.py:561: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 2, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(_create_warning_msg(
+/ext3/miniconda3/lib/python3.10/site-packages/torch/utils/data/dataloader.py:561: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 2, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(_create_warning_msg(
+wandb: 
+wandb: Run history:
+wandb:               lr ███████▇▇▇▇▇▇▆▆▆▆▅▅▅▄▄▄▄▃▃▃▃▂▂▂▂▂▁▁▁▁▁▁▁
+wandb:  train/train_acc ▁▅▆▅▆▅▅▆▅▆▆▇▇▆▇▆▅▇▅▇▆▇▆███▇▆█▇█▇████▇███
+wandb: train/train_loss █▅▃▃▄▄▅▃▃▄▄▃▂▃▃▃▄▂▄▂▃▂▂▂▁▂▂▂▁▂▁▂▁▁▁▁▁▁▁▁
+wandb:     val/val_acc1 ▁▅▅▄▄▄▄▄▄▄▅▅▅▅▅▆▆▅▅▆▆▇▆▇▇▇▇█▆▇▇▇█▇▇█████
+wandb:     val/val_acc5 ▁▄▅▄▄▅▅▅▅▅▆▆▆▅▆▆▆▆▇▅▇▇▆▇▆▆▇▅▇▇▇▇▇███████
+wandb:      val/val_few ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:     val/val_many ▁▃▅▄▅▅▅▅▅▅▅▅▆▆▆▆▆▆▇▆▆▆▆▇▇▇▇▆▇▇▇█████████
+wandb:   val/val_medium ▂▆▄▃▃▂▂▁▃▃▄▃▃▃▃▅▄▃▂▄▄▆▅▅▆▆▆█▃▆▃▅▅▅▄▅▆▆▅▆
+wandb: 
+wandb: Run summary:
+wandb:               lr 0.0
+wandb:  train/train_acc 1.0
+wandb: train/train_loss 0.00545
+wandb:     val/val_acc1 65.3
+wandb:     val/val_acc5 98.81
+wandb:      val/val_few 0.0
+wandb:     val/val_many 96.72
+wandb:   val/val_medium 33.88
+wandb: 
+wandb: 🚀 View run grateful-night-6 at: https://wandb.ai/ml-nyush/long_tail/runs/ziwtgrmt
+wandb: ️⚡ View job at https://wandb.ai/ml-nyush/long_tail/jobs/QXJ0aWZhY3RDb2xsZWN0aW9uOjEyMTA4MDc0Ng==/version_details/v4
+wandb: Synced 6 W&B file(s), 4 media file(s), 2 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20231206_082810-ziwtgrmt/logs
+wandb: 
+wandb: Run history:
+wandb:               lr ███████▇▇▇▇▇▇▆▆▆▆▅▅▅▄▄▄▄▃▃▃▃▂▂▂▂▂▁▁▁▁▁▁▁
+wandb:  train/train_acc ▂▁▃▄▃▅▅▅▅▆▇▆▆▆▇▆▇▇▇▇▇▇▇▇██▇█████████████
+wandb: train/train_loss █▆▄▄▅▃▄▅▃▂▂▂▃▃▂▂▃▃▂▂▂▂▂▂▂▁▁▁▁▁▁▁▂▁▁▁▁▁▁▁
+wandb:     val/val_acc1 ▁▃▅▅▅▆▅▆▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇▇▇▇▇█████████
+wandb:     val/val_acc5 ▁▅▆▇▆▇▆▇▇▇▇▆▇▇▇▇▇██▇█▇▇▇▇███████████████
+wandb:      val/val_few ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:     val/val_many ▁▃▅▅▅▆▆▆▆▆▆▅▆▆▇▅▆▇▇▆▇▇▇▇▇▇▇▇▇▇▇█████████
+wandb:   val/val_medium ▁▃▅▆▄▆▅▄▆▄▅▆▇▆▅█▆▆▅▇▅▇▇▆▆▇▅▇▇▇▆▆▆▆▆▆▆▆▆▇
+wandb: 
+wandb: Run summary:
+wandb:               lr 0.0
+wandb:  train/train_acc 0.95312
+wandb: train/train_loss 0.02284
+wandb:     val/val_acc1 83.64
+wandb:     val/val_acc5 98.67
+wandb:      val/val_few 0.0
+wandb:     val/val_many 86.2
+wandb:   val/val_medium 73.4
+wandb: 
+wandb: 🚀 View run ethereal-elevator-9 at: https://wandb.ai/ml-nyush/long_tail/runs/b3y7z0z7
+wandb: ️⚡ View job at https://wandb.ai/ml-nyush/long_tail/jobs/QXJ0aWZhY3RDb2xsZWN0aW9uOjEyMTA4MDc0Ng==/version_details/v5
+wandb: Synced 6 W&B file(s), 4 media file(s), 2 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20231206_101638-b3y7z0z7/logs
+wandb: - 0.238 MB of 0.238 MB uploadedwandb: \ 0.238 MB of 0.245 MB uploadedwandb: | 0.691 MB of 0.691 MB uploadedwandb: 
+wandb: Run history:
+wandb:               lr ███████▇▇▇▇▇▇▆▆▆▆▅▅▅▄▄▄▄▃▃▃▃▂▂▂▂▂▁▁▁▁▁▁▁
+wandb:  train/train_acc ▁▂▅▄▄▆▆▅▆▇▇▆▇█▅▇▇▇▇▇▆▇▇▇███▇████████████
+wandb: train/train_loss █▇▄▅▄▃▄▄▃▂▂▃▃▂▃▂▃▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:     val/val_acc1 ▁▃▅▅▅▆▆▆▆▇▆▆▆▆▇▇▆▆▇▇▇▇▇▇▇▇▇▇▇▇██████████
+wandb:     val/val_acc5 ▁▅▆▆▆▇▆▇▆▇▆▇▆▇▇▇▆▇▇▇▇█▇███▇█████████████
+wandb:      val/val_few ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:     val/val_many ▁▃▅▅▅▆▆▆▆▆▆▅▆▇▇▇▇▇▆▆▇▇▆▇▇▇▇▇████████████
+wandb:   val/val_medium ▁▂▅▆▅▆▄▅▄▇▄█▄▅▆▇▄▄▆▇▆███▇▅▆▇▆▆▆▆▆▆▆▆▇▇▇▇
+wandb: 
+wandb: Run summary:
+wandb:               lr 0.0
+wandb:  train/train_acc 1.0
+wandb: train/train_loss 0.01779
+wandb:     val/val_acc1 82.61
+wandb:     val/val_acc5 99.05
+wandb:      val/val_few 0.0
+wandb:     val/val_many 85.325
+wandb:   val/val_medium 71.75
+wandb: 
+wandb: 🚀 View run sunny-lion-7 at: https://wandb.ai/ml-nyush/long_tail/runs/br4q9tb1
+wandb: ️⚡ View job at https://wandb.ai/ml-nyush/long_tail/jobs/QXJ0aWZhY3RDb2xsZWN0aW9uOjEyMTA4MDc0Ng==/version_details/v5
+wandb: Synced 6 W&B file(s), 4 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20231206_101637-br4q9tb1/logs
+wandb: - 0.238 MB of 0.238 MB uploadedwandb: \ 0.238 MB of 0.238 MB uploadedwandb: | 0.238 MB of 0.238 MB uploadedwandb: / 0.238 MB of 0.238 MB uploadedwandb: - 0.238 MB of 0.238 MB uploadedwandb: \ 0.238 MB of 0.238 MB uploadedwandb: | 0.238 MB of 0.238 MB uploadedwandb: 
+wandb: Run history:
+wandb:               lr ███████▇▇▇▇▇▇▆▆▆▆▅▅▅▄▄▄▄▃▃▃▃▂▂▂▂▂▁▁▁▁▁▁▁
+wandb:  train/train_acc ▁▁▄▄▄▄▅▅▅▅▅▅▅▅▆▅▅▅▅▆▆▆▆▇▇▇█▇█▇▇█████████
+wandb: train/train_loss █▅▃▃▄▄▄▂▃▃▃▃▂▂▃▂▃▃▄▂▄▂▂▂▁▂▁▃▁▁▂▂▁▁▁▁▁▁▁▁
+wandb:     val/val_acc1 ▁▄▅▅▅▅▄▅▅▅▆▆▆▆▆▇▅▆▆▇▇█▆█▇▇▇█▇▇▇██▇▇▇▇▇▇▇
+wandb:     val/val_acc5 ▁▄▅▅▅▅▃▆▅▅▇▇▆▆▆▇▅▇▇▇▅▇▆▆▅▇▄▅▆▇▇▇▇███████
+wandb:      val/val_few ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:     val/val_many ▁▃▄▄▄▄▄▅▄▅▅▅▅▆▆▆▆▆▆▆▆▇▇▇▆▇▆▇▇█▇▇▇███████
+wandb:   val/val_medium ▁▄▄▄▄▄▄▄▆▅▇▆▆▅▆▆▃▆▅▇▇█▄▇▇▄██▅▃▃▆▆▄▄▃▃▃▃▃
+wandb: 
+wandb: Run summary:
+wandb:               lr 0.0
+wandb:  train/train_acc 1.0
+wandb: train/train_loss 0.0039
+wandb:     val/val_acc1 62.8
+wandb:     val/val_acc5 98.77
+wandb:      val/val_few 0.0
+wandb:     val/val_many 96.58
+wandb:   val/val_medium 29.02
+wandb: 
+wandb: 🚀 View run dandy-eon-7 at: https://wandb.ai/ml-nyush/long_tail/runs/lgrpi0pp
+wandb: ️⚡ View job at https://wandb.ai/ml-nyush/long_tail/jobs/QXJ0aWZhY3RDb2xsZWN0aW9uOjEyMTA4MDc0Ng==/version_details/v6
+wandb: Synced 6 W&B file(s), 4 media file(s), 2 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20231206_101637-lgrpi0pp/logs
