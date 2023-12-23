@@ -1,9 +1,7 @@
 data/
 VS_plot/
-plot/
 output/
 utils/__pycache__/
-VS_plot/
 wandb/
 submit/
 __pycache__/

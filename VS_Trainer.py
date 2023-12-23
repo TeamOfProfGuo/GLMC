@@ -1,24 +1,25 @@
 import sys
 import math
 import time
-import torch
 import wandb
-import random
+import torch
+import pickle
 import datetime
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.metrics import confusion_matrix
 from tensorboardX import SummaryWriter
+from sklearn.metrics import confusion_matrix
+
 from utils import util
-from utils.draw_plot import *
 from utils.util import *
+from utils.plot import plot_nc
 from utils.measure_nc import analysis
 from model.KNN_classifier import KNNClassifier
-from model.vsloss import VSLoss
+from model.loss import CrossEntropyLabelSmooth, CDTLoss, LDTLoss
 
 class Trainer(object):
-    def __init__(self, args, model=None,train_loader=None, val_loader=None,weighted_train_loader=None,per_class_num=[],log=None, data_percent = None):
+    def __init__(self, args, model=None,train_loader=None, val_loader=None,weighted_train_loader=None,per_class_num=[],log=None):
         self.args = args
         self.device = args.gpu
         self.print_freq = args.print_freq
@@ -40,8 +41,8 @@ class Trainer(object):
         self.log = log
         self.beta = args.beta
         self.update_weight()
-        self.data_percent = data_percent
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # for writing summary
         path = os.path.join(args.root_model, args.store_name, 'log')
         self.writer = SummaryWriter(path)
 
@@ -143,7 +144,26 @@ class Trainer(object):
                         epoch + 1, self.epochs, i, len(self.train_loader), batch_time=batch_time,
                     data_time=data_time, loss=losses))  # TODO
                     print(output)
-                    # evaluate on validation set
+                    
+            # measure NC
+            if self.args.debug>0:
+                if (epoch+1) % self.args.debug == 0:
+                    nc_dict = analysis(self.model, self.train_loader, self.args)
+                    self.log.info('Loss:{:.3f}, Acc:{:.2f}, NC1:{:.3f},\nWnorm:{}\nHnorm:{}\nWcos:{}\nWHcos:{}'.format(
+                        nc_dict['loss'], nc_dict['acc'], nc_dict['nc1'],
+                        np.array2string(nc_dict['w_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
+                        np.array2string(nc_dict['h_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
+                        np.array2string(nc_dict['w_cos_avg'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
+                        np.array2string(nc_dict['wh_cos'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x})
+                    ))
+                if (epoch+1) % (5*self.args.debug) == 0:
+                    filename = os.path.join(self.args.root_model, self.args.store_name, 'analysis{}.pkl'.format(epoch))
+                    import pickle
+                    with open(filename, 'wb') as f:
+                        pickle.dump(nc_dict, f)
+                    self.log.info('-- Has saved the NC analysis result to {}'.format(filename))
+
+            # evaluate on validation set
             acc1 = self.validate(epoch=epoch)
             if self.args.dataset == 'ImageNet-LT' or self.args.dataset == 'iNaturelist2018':
                 self.paco_adjust_learning_rate(self.optimizer, epoch, self.args)
@@ -160,169 +180,122 @@ class Trainer(object):
                 'best_acc1':  best_acc1,
             }, is_best, epoch + 1)
 
-    def train_base(self, cls_num_list):
-        best_acc1 = 0
-        if self.args.loss == 'ce':
-            criterion = nn.CrossEntropyLoss(reduction='mean')                # train fc_bc
-        elif self.args.loss == 'ls':
-            criterion = CrossEntropyLabelSmooth(self.args.num_classes, epsilon=self.args.eps)
+    def train_one_epoch(self):
 
-        elif self.args.loss == 'wce':
-            criterion = nn.CrossEntropyLoss(weight=self.per_cls_weights, reduction='mean')
+        # switch to train mode
+        self.model.train()
+        losses = AverageMeter('Loss', ':.4e')
+        train_acc = AverageMeter('Train_acc', ':.4e')
 
-        elif self.args.loss == 'hce':
-            criterion = nn.CrossEntropyLoss(reduction='mean')
+        if self.args.resample_weighting > 0:
+            train_loader = self.weighted_train_loader
+        else:
+            train_loader = self.train_loader
 
-        elif self.args.loss == 'bce':
-            criterion = nn.BCEWithLogitsLoss(reduction='mean')
+        for i, (inputs, targets) in enumerate(train_loader):
 
-        elif self.args.loss == 'vs':
-            # Assuming cls_num_list, gamma, and tau are defined in self.args
-            criterion = VSLoss(
-                        args=self.args,
-                        reduction='mean', 
-                        data_percent=self.data_percent
-                    )
-
-        wandb.watch(self.model, criterion, log="all", log_freq=10)
-        num_iter = 0
-
-
-        for epoch in range(self.start_epoch, self.epochs):
-            batch_time = AverageMeter('Time', ':6.3f')
-            losses = AverageMeter('Loss', ':.4e')
-            train_acc = AverageMeter('Train_acc', ':.4e')
-
-            # switch to train mode
-            self.model.train()
-            end = time.time()
-
-            if self.args.resample_weighting > 0: 
-                train_loader = self.weighted_train_loader 
-            else: 
-                train_loader = self.train_loader
-
-            
-
-            for i, (inputs, targets) in enumerate(self.train_loader):
-
-                num_iter += 1
-                inputs = inputs.to(self.device)
-                targets = targets.to(self.device)
-                if self.args.mixup >= 0.0:
-                    output_cb, reweighted_targets, h = self.model.forward_mixup(inputs, targets, mixup=self.args.mixup, mixup_alpha=self.args.mixup_alpha)
-
-                else:
-                    output, output_cb, z, p, h = self.model(inputs, ret='all')
-
-                train_acc.update(torch.sum(output_cb.argmax(dim=-1) == targets).item() / targets.size(0),
-                                                targets.size(0))
-                                                
-                loss = criterion(output_cb, reweighted_targets if self.args.mixup >= 0 else targets)
-                losses.update(loss.item(), targets.size(0))
-
-                if self.args.loss != 'hce':
-                    self.optimizer.zero_grad()
-                    loss.backward()
-                    self.optimizer.step()   
-
-                elif self.args.loss == 'hce':
-                    # gradient of L wrt. b
-                    beta = self.per_cls_weights[targets]
-                    P = nn.Softmax(dim=-1)(output_cb.detach())
-                    Y = torch.eye(self.args.num_classes, device=targets.device)[targets]
-                    b_grad = beta.unsqueeze(1) * (P-Y) #[B, K]
-                    b_grad = torch.sum(b_grad, dim=0)/len(b_grad)
-
-                    # gradient of L wrt. W
-                    weighted_P_Y = (P.detach()-Y) * beta.unsqueeze(1) #[B,K]
-                    W_grad = torch.einsum('db, bk->dk', h.detach().T, weighted_P_Y)/len(output_cb) #[D,K]
-                    W_grad = W_grad.T
-
-                    self.optimizer.zero_grad()
-                    loss.backward()
-                    self.model.fc_cb.bias.grad = b_grad
-                    self.model.fc_cb.weight.grad = W_grad
-                    self.optimizer.step()
-
-
-                '''
+            inputs = inputs.to(self.device)
+            targets = targets.to(self.device)
+            if self.args.mixup >= 0:
+                output_cb, reweighted_targets, h = self.model.forward_mixup(inputs, targets, mixup=self.args.mixup,
+                                                                            mixup_alpha=self.args.mixup_alpha)
+            else:
                 output, output_cb, z, p, h = self.model(inputs, ret='all')
 
-                if self.args.loss != 'hce':
-                    loss = criterion(output_cb, targets)
-                    losses.update(loss.item(), inputs[0].size(0))
-                    train_acc.update(torch.sum(output_cb.argmax(dim=-1) == targets).item()/targets.size(0),
-                                     targets.size(0)
-                                     )
+            # ==== update loss and acc
+            train_acc.update(torch.sum(output_cb.argmax(dim=-1) == targets).item() / targets.size(0),
+                             targets.size(0)
+                             )
+            loss = self.criterion(output_cb, reweighted_targets if self.args.mixup >= 0 else targets)
+            losses.update(loss.item(), targets.size(0))
 
-                    self.optimizer.zero_grad()
-                    loss.backward()
-                    self.optimizer.step()
+            # ==== gradient update
+            if self.args.loss != 'hce':
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
 
-                elif self.args.loss == 'hce':
-                    criterion = nn.CrossEntropyLoss(reduction='mean')
+            elif self.args.loss == 'hce':
 
-                    # gradient of L wrt. b
-                    beta = self.per_cls_weights[targets]           # [B]
-                    P = nn.Softmax(dim=-1)(output_cb.detach())     # [B, K]
-                    Y = torch.eye(self.args.num_classes, device=targets.device)[targets]  # [B, K]
-                    b_grad = beta.unsqueeze(1) * (P-Y)             # [B, K]
-                    b_grad = torch.sum(b_grad, dim=0)/len(b_grad)
+                # gradient of L wrt. b
+                beta = self.per_cls_weights[targets]  # [B]
+                P = nn.Softmax(dim=-1)(output_cb.detach())  # [B, K]
+                Y = torch.eye(self.args.num_classes, device=targets.device)[targets]  # [B, K]
+                b_grad = beta.unsqueeze(1) * (P - Y)  # [B, K]
+                b_grad = torch.sum(b_grad, dim=0) / len(b_grad)
 
-                    # gradient of L wrt. W
-                    weighted_P_Y = (P.detach()-Y) * beta.unsqueeze(1)                                # [B, K]
-                    W_grad = torch.einsum('db, bk->dk', h.detach().T, weighted_P_Y)/len(output_cb)   # [D, K]
-                    W_grad = W_grad.T    # [K, D]
+                # gradient of L wrt. W
+                weighted_P_Y = (P.detach() - Y) * beta.unsqueeze(1)  # [B, K]
+                W_grad = torch.einsum('db, bk->dk', h.detach().T, weighted_P_Y) / len(output_cb)  # [D, K]
+                W_grad = W_grad.T  # [K, D]
 
-                    loss = criterion(output_cb, targets)
-                    losses.update(loss.item(), inputs[0].size(0))
-                    self.optimizer.zero_grad()
-                    loss.backward()
-                    self.model.fc_cb.bias.grad = b_grad
-                    self.model.fc_cb.weight.grad = W_grad
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.model.fc_cb.bias.grad = b_grad
+                self.model.fc_cb.weight.grad = W_grad
+                self.optimizer.step()
+        return losses, train_acc
 
-                    self.optimizer.step()
-                '''
+    def train_base(self):
+        best_acc1 = 0
 
-                # measure elapsed time
-                batch_time.update(time.time() - end)
-                end = time.time()
-                if i % self.print_freq == 0:
-                    output = 'Epoch: [{0}/{1}][{2}/{3}], Time {batch_time.val:.3f} ({batch_time.avg:.3f}), Loss {loss.val:.4f} ({loss.avg:.4f})'.format(
-                        epoch + 1, self.epochs, i, len(self.train_loader), batch_time=batch_time, loss=losses)
-                    wandb.log({'train/train_loss': losses.avg,
-                               'train/train_acc': train_acc.avg,
-                               'lr': self.optimizer.param_groups[0]['lr']},
-                              step=num_iter)
-                    losses.reset()
-                    train_acc.reset()
+        if self.args.loss == 'ce':
+            self.criterion = nn.CrossEntropyLoss(reduction='mean')  # train fc_bc
+        elif self.args.loss == 'ls':
+            self.criterion = CrossEntropyLabelSmooth(self.args.num_classes, epsilon=self.args.eps)
+        elif self.args.loss == 'ldt':
+            delta_list = self.cls_num_list / np.min(self.cls_num_list)
+            self.criterion = LDTLoss(delta_list, gamma=0.5, device=self.device)
+        elif self.args.loss == 'wce':
+            self.criterion = nn.CrossEntropyLoss(reduction='mean', weight=self.per_cls_weights)
+        elif self.args.loss == 'hce':
+            self.criterion = nn.CrossEntropyLoss(reduction='mean')
+        elif self.args.loss == 'bce':
+            self.criterion = nn.BCELoss(reduction='mean')
 
-            self.log.info('EPOCH: {epoch} Train: Time {batch_time.val:.3f} ({batch_time.avg:.3f}), Loss {loss.val:.4f} ({loss.avg:.4f})'.format(
-                epoch=epoch + 1, batch_time=batch_time, loss=losses))
+        # tell wandb to watch what the model gets up to: gradients, weights, and more!
+        wandb.watch(self.model, self.criterion, log="all", log_freq=10)
+        train_nc = Graph_Vars()
 
+        for epoch in range(self.start_epoch, self.epochs):
+            start_time = time.time()
+            losses, train_acc = self.train_one_epoch()
+            epoch_time = time.time() - start_time
 
+            self.log.info('====>EPOCH{epoch}Train{iters}, Epoch Time:{epoch_time:.3f}, Loss:{loss:.4f}, Acc:{acc:.4f}'.format(
+                epoch=epoch+1, iters=len(self.train_loader), epoch_time=epoch_time, loss=losses.avg, acc=train_acc.avg
+            ))
+            wandb.log({'train/train_loss': losses.avg,
+                       'train/train_acc': train_acc.avg,
+                       'lr': self.optimizer.param_groups[0]['lr']},
+                      step=epoch+1)
 
             # measure NC
             if self.args.debug>0:
-                if (epoch + 1) % self.args.debug == 0:  #debug: if (epoch + 1) % self.args.debug == 0:
+                if (epoch+1) % self.args.debug == 0:
                     nc_dict = analysis(self.model, self.train_loader, self.args)
-                    self.log.info('Loss:{:.3f}, Acc:{:.2f}, NC1:{:.3f}, NC2h:{:.3f}, NC2W:{:.3f}, NC3:{:.3f}\nWnorm:{}\nHnorm:{}\nWHcos:{}'.format(
+                    self.log.info('Loss:{:.3f}, Acc:{:.2f}, NC1:{:.3f}, NC2h:{:.3f}, NC2W:{:.3f}, NC3:{:.3f}'.format(
                         nc_dict['loss'], nc_dict['acc'], nc_dict['nc1'], nc_dict['nc2_h'], nc_dict['nc2_w'], nc_dict['nc3'],
-                        np.array2string(nc_dict['w_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
-                        np.array2string(nc_dict['h_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
-                        np.array2string(nc_dict['w_cos_avg'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
-                        np.array2string(nc_dict['wh_cos'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x})
+                        # np.array2string(nc_dict['w_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
+                        # np.array2string(nc_dict['h_norm'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x}),
+                        # np.array2string(nc_dict['wh_cos'], separator=',', formatter={'float_kind': lambda x: "%.3f" % x})
                     ))
-
-                    if (epoch + 1) % (self.args.debug*5) ==0: #debug: if (epoch+1) % (self.args.debug*5) ==0: 
+                    train_nc.load_dt(nc_dict, epoch=epoch+1, lr=self.optimizer.param_groups[0]['lr'])
+                    wandb.log({'nc/loss': nc_dict['loss'],
+                               'nc/acc':  nc_dict['acc'],
+                               'nc/nc1':  nc_dict['nc1'],
+                               'nc/nc2h': nc_dict['nc2_h'],
+                               'nc/nc2w': nc_dict['nc2_w'],
+                               'nc/nc3':  nc_dict['nc3']},
+                              step=epoch+1)
+                    if (epoch+1) % (self.args.debug*5) ==0:
                         fig = plot_nc(nc_dict)
-                        wandb.log({"chart": fig}, step=num_iter)
-                        filename = os.path.join(self.args.root_model, self.args.store_name, 'analysis{}.pkl'.format(epoch))	       
-                        import pickle	               
-                        with open(filename, 'wb') as f:	                    
+                        wandb.log({"chart": fig}, step=epoch+1)
+
+                        filename = os.path.join(self.args.root_model, self.args.store_name, 'analysis{}.pkl'.format(epoch))
+                        with open(filename, 'wb') as f:
                             pickle.dump(nc_dict, f)
-                            self.log.info('-- Has saved the NC analysis result to {}'.format(filename))
+                        self.log.info('-- Has saved the NC analysis result/epoch{} to {}'.format(epoch+1, filename))
 
             # evaluate on validation set
             if self.args.knn:
@@ -338,13 +311,19 @@ class Trainer(object):
             # remember best acc@1 and save checkpoint
             is_best = acc1 > best_acc1
             best_acc1 = max(acc1,  best_acc1)
-            output_best = 'Best Prec@1: %.3f\n' % (best_acc1)
-            print(output_best)
             save_checkpoint(self.args, {
                 'epoch': epoch + 1,
                 'state_dict': self.model.state_dict(),
                 'best_acc1':  best_acc1,
             }, is_best, epoch + 1)
+
+        self.log.info('Best Testing Prec@1: {%.3f}\n'.format(best_acc1))
+
+        # Store NC statistics
+        filename = os.path.join(self.args.root_model, self.args.store_name, 'train_nc.pkl')
+        with open(filename, 'wb') as f:
+            pickle.dump(train_nc, f)
+        self.log.info('-- Has saved Train NC analysis result to {}'.format(filename))
 
     def validate(self,epoch=None):
         batch_time = AverageMeter('Time', ':6.3f')
@@ -387,20 +366,20 @@ class Trainer(object):
                     print(output)
 
             cls_acc, many_acc, medium_acc, few_acc = self.calculate_acc(all_targets, all_preds)
-            self.log.info('====> EPOCH: {epoch} Val: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(epoch=epoch + 1, top1=top1, top5=top5))
+            self.log.info('---->EPOCH{epoch} Val: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(epoch=epoch + 1, top1=top1, top5=top5))
             self.log.info("many acc {:.2f}, med acc {:.2f}, few acc {:.2f}".format(many_acc, medium_acc, few_acc))
-            out_cls_acc = '%s Class Accuracy: %s' % ('val', (np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x})))
-            self.log.info(out_cls_acc)
+            # out_cls_acc = '%s Class Accuracy: %s' % ('val', (np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x})))
+            # self.log.info(out_cls_acc)
 
-            wandb.log({
-                'val/val_acc1': top1.avg,
-                'val/val_acc5': top5.avg,
-                'val/val_many': many_acc,
-                'val/val_medium': medium_acc,
-                'val/val_few': few_acc
-            })
+            wandb.log({'val/val_acc1': top1.avg,
+                       'val/val_acc5': top5.avg,
+                       'val/val_many': many_acc,
+                       'val/val_medium': medium_acc,
+                       'val/val_few': few_acc},
+                      step=epoch+1)
 
         return top1.avg
+
 
     def validate_knn(self,epoch=None):
         batch_time = AverageMeter('Time', ':6.3f')
@@ -444,19 +423,18 @@ class Trainer(object):
                     print(output)
 
             cls_acc, many_acc, medium_acc, few_acc = self.calculate_acc(all_targets, all_preds)
-            self.log.info('EPOCH: {epoch} Val: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(epoch=epoch + 1, top1=top1, top5=top5))
+            self.log.info('---->EPOCH{epoch} Val: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(epoch=epoch + 1, top1=top1, top5=top5))
             self.log.info("many acc {:.2f}, med acc {:.2f}, few acc {:.2f}".format(many_acc, medium_acc, few_acc))
-            out_cls_acc = '%s Class Accuracy: %s' % ('val', (np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x})))
-            
-            self.log.info(out_cls_acc)
 
-            wandb.log({
-                'val/val_acc1': top1.avg,
-                'val/val_acc5': top5.avg,
-                'val/val_many': many_acc,
-                'val/val_medium': medium_acc,
-                'val/val_few': few_acc
-            })
+            # out_cls_acc = '%s Class Accuracy: %s' % ('val', (np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x})))
+            # self.log.info(out_cls_acc)
+
+            wandb.log({'val/val_acc1': top1.avg,
+                       'val/val_acc5': top5.avg,
+                       'val/val_many': many_acc,
+                       'val/val_medium': medium_acc,
+                       'val/val_few': few_acc},
+                      step=epoch + 1)
 
         return top1.avg
 
@@ -501,7 +479,7 @@ class Trainer(object):
             param_group['lr'] = lr
 
     def get_knncentroids(self):
-        print('===> Calculating KNN centroids.')
+        # print('===> Calculating KNN centroids.')
 
         torch.cuda.empty_cache()
         self.model.eval()
@@ -547,6 +525,5 @@ class Trainer(object):
                 'uncs': un_centers,
                 'l2ncs': l2n_centers,
                 'cl2ncs': cl2n_centers}
-
 
 

@@ -26,13 +26,13 @@ def get_model(args):
     else:
         print("=> creating model '{}'".format(args.arch))
         if args.arch == 'resnet50':
-            net = ResNet_cifar.resnet50(num_class=args.num_classes)
+            net = ResNet_cifar.resnet50(num_class=args.num_classes, ETF_fc=args.ETF_fc)
         elif args.arch == 'resnet18':
-            net = ResNet_cifar.resnet18(num_class=args.num_classes)
+            net = ResNet_cifar.resnet18(num_class=args.num_classes, ETF_fc=args.ETF_fc)
         elif args.arch == 'resnet32':
             net = ResNet_cifar.resnet32(num_class=args.num_classes, ETF_fc=args.ETF_fc)
         elif args.arch == 'resnet34':
-            net = ResNet_cifar.resnet34(num_class=args.num_classes)
+            net = ResNet_cifar.resnet34(num_class=args.num_classes, ETF_fc=args.ETF_fc)
         return net
 
 def get_dataset(args):
@@ -87,7 +87,7 @@ def main(args):
     os.environ["WANDB_API_KEY"] = "cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb"
     os.environ["WANDB_MODE"] = "dryrun" # "dryrun" or "online"
     wandb.login(key='cd3fbdd397ddb5a83b1235d177f4d81ce1200dbb')
-    wandb.init(project="Imbalance Rate 1", name=args.store_name)
+    wandb.init(project="CIFAR10_Res32_IR_1_CE_KNN_C", name=args.store_name)
     wandb.config.update(args)
 
     main_worker(args.gpu, wandb.config)
@@ -162,6 +162,7 @@ def main_worker(gpu, args):
     trainer.train_base(cls_num_list)
     end_time = time.time()
     print("It took {} to execute the program".format(hms_string(end_time - start_time)))
+    
 
 if __name__ == '__main__':
     # train set

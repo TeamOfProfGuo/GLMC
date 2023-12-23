@@ -11,16 +11,16 @@ from torchvision import transforms
 
 
 class Cifar100Imbanlance(Dataset):
-    def __init__(self, imbanlance_rate=0.1, file_path="data/cifar-100-python/", num_cls=100, transform=None,
+    def __init__(self, imbalance_rate=0.1, file_path="data/cifar-100-python/", num_cls=100, transform=None,
                  train=True):
         self.transform = transform
-        assert 0.0 < imbanlance_rate <= 1, "imbanlance_rate must 0.0 < p <= 1"
+        assert 0.0 < imbalance_rate <= 1, "imbanlance_rate must 0.0 < p <= 1"
         self.num_cls = num_cls
         self.file_path = file_path
-        self.imbanlance_rate = imbanlance_rate
+        self.imbalance_rate = imbalance_rate
 
         if train is True:
-            self.data = self.produce_imbanlance_data(self.imbanlance_rate)
+            self.data = self.produce_imbanlance_data(self.imbalance_rate)
         else:
             self.data = self.produce_test_data()
         self.x = self.data['x']
@@ -52,7 +52,7 @@ class Cifar100Imbanlance(Dataset):
 
         return dataset
 
-    def produce_imbanlance_data(self, imbanlance_rate):
+    def produce_imbanlance_data(self, imbalance_rate):
 
         with open(os.path.join(self.file_path,"train"), 'rb') as fo:
             dict = pickle.load(fo, encoding='bytes')
@@ -67,7 +67,7 @@ class Cifar100Imbanlance(Dataset):
         data_num = int(x_train.shape[0] / self.num_cls)
 
         for cls_idx in range(self.num_cls):
-            num = data_num * (imbanlance_rate ** (cls_idx / (self.num_cls - 1)))
+            num = data_num * (imbalance_rate ** (cls_idx / (self.num_cls - 1)))
             data_percent.append(int(num))
 
         self.per_class_num = data_percent
