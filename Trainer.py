@@ -317,7 +317,7 @@ class Trainer(object):
                 'best_acc1':  best_acc1,
             }, is_best, epoch + 1)
 
-        self.log.info('Best Testing Prec@1: {%.3f}\n'.format(best_acc1))
+        self.log.info('Best Testing Prec@1: {:.3f}\n'.format(best_acc1))
 
         # Store NC statistics
         filename = os.path.join(self.args.root_model, self.args.store_name, 'train_nc.pkl')

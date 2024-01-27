@@ -9,7 +9,7 @@ class Cifar10Imbanlance(Dataset):
                  train=True, transform=None, label_align=True, ):
         self.transform = transform
         self.label_align = label_align
-        assert 0.0 < imbanlance_rate <= 1, "imbanlance_rate must 0.0 < imbanlance_rate <= 1"
+        assert 0.0 <= imbanlance_rate <= 1, "imbanlance_rate must 0.0 <= imbanlance_rate <= 1"
         self.imbanlance_rate = imbanlance_rate
 
         self.num_cls = num_cls
@@ -51,6 +51,15 @@ class Cifar10Imbanlance(Dataset):
                 data_percent.append(int(num))
             else:
                 num = data_num
+                data_percent.append(int(num))
+        
+        if imbanlance_rate == 0:
+            data_percent = []
+            for cls_idx in range(self.num_cls):
+                if cls_idx<self.num_cls/2:
+                    num = data_num
+                else:
+                    num = data_num/100
                 data_percent.append(int(num))
         self.class_list = data_percent
         if train:

@@ -11,3 +11,5 @@ output/
 *.pyc
 imbalance_data/__pycache__/
 wandb/
+
+script/api.sh

@@ -52,12 +52,29 @@ def main(args):
         cudnn.deterministic = True
         cudnn.benchmark = True
 
-    os.environ["WANDB_API_KEY"] = "0c0abb4e8b5ce4ee1b1a4ef799edece5f15386ee"
+    if args.small:
+        args.resume = None
+        args.epochs = 2
+        args.debug = 1
+
+    os.environ["WANDB_API_KEY"] = args.wandb_key
     os.environ["WANDB_MODE"] = "online" #"dryrun"
-    os.environ["WANDB_CACHE_DIR"] = "/scratch/lg154/sseg/.cache/wandb"
-    os.environ["WANDB_CONFIG_DIR"] = "/scratch/lg154/sseg/.config/wandb"
-    wandb.login(key='0c0abb4e8b5ce4ee1b1a4ef799edece5f15386ee')
-    wandb.init(project="CF10",
+    #os.environ["WANDB_CACHE_DIR"] = "/scratch/lg154/sseg/.cache/wandb"
+    #os.environ["WANDB_CONFIG_DIR"] = "/scratch/lg154/sseg/.config/wandb"
+    wandb.login(key=args.wandb_key)	
+
+    if args.imbanlance_rate == 0.01:
+        project_name = "IMB_100"
+    elif args.imbanlance_rate == 0.1:
+        project_name = "IMB_10"
+    elif args.imbanlance_rate == 0:
+        project_name = "IMB_STEP"
+
+    if args.dataset == "cifar100":
+        project_name = "CIFAR100_"+project_name
+    if args.small:
+        project_name = "jx_test"
+    wandb.init(project=project_name,
                name=args.store_name
                )
     wandb.config.update(args)
@@ -78,6 +95,12 @@ def main_worker(gpu, args):
     logger = logging.getLogger()
     logger.addHandler(fh)
     logging.info(args)
+    # logger.info(args)
+    # logger.error(args)
+    # logger.debug(args)
+    # logger.info("where is my output?")
+    # logger.error("where is my output?")
+    # logger.debug("where is my output?")
 
     # ==================== create model
     model = get_model(args)
@@ -132,7 +155,7 @@ def main_worker(gpu, args):
     weighted_train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
                                                         num_workers=args.workers, persistent_workers=True,
                                                         pin_memory=True, sampler=weighted_sampler)
-
+ 
     start_time = time.time()
     print("Training started!")
     trainer = Trainer(args, model=model, train_loader=train_loader, val_loader=val_loader,
@@ -140,17 +163,20 @@ def main_worker(gpu, args):
     trainer.train_base()
     end_time = time.time()
     print("It took {} to execute the program".format(hms_string(end_time - start_time)))
+    fh.close()
 
 
 if __name__ == '__main__':
     # train set
     parser = argparse.ArgumentParser(description="Global and Local Mixture Consistency Cumulative Learning")
+    parser.add_argument('--wandb_key', type=str, default=None, help="wandb's private API key")
+    parser.add_argument('--small', action='store_true', default=False, help="Enable debugging")
     parser.add_argument('--dataset', type=str, default='cifar100', help="cifar10,cifar100,ImageNet-LT,iNaturelist2018")
     parser.add_argument('--root', type=str, default='../dataset/', help="dataset setting")
     parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet32',
                         choices=('resnet18', 'resnet34', 'resnet32', 'resnet50', 'resnext50_32x4d'))
     parser.add_argument('--num_classes', default=100, type=int, help='number of classes ')
-    parser.add_argument('--imbanlance_rate', default=0.01, type=float, help='imbalance factor')
+    parser.add_argument('--imbanlance_rate', default=0.01, type=float, help='imbalance factor [1,0.1,0.02,0.01,0]') #0 refers to step-wise
 
     parser.add_argument('--lr', '--learning-rate', default=0.01, type=float, metavar='LR', help='initial learning rate',
                         dest='lr')
@@ -204,7 +230,7 @@ if __name__ == '__main__':
     args.store_name = '{}_{}/{}/{}'.format(
         args.dataset, args.arch,
         str(args.imbanlance_rate),
-        file_name
+        args.loss+"_mx"+str(args.mixup)+"a"+str(args.mixup_alpha)
     )
 
     main(args)
